@@ -31,6 +31,42 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+**/build/
+
+# Node.js / npm
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+**/node_modules/
+
+# Gradle
+.gradle/
+**/.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+proguard/
+*.iml
+.gradle/
+local.properties
+*.hprof
+.cxx/
+.externalNativeBuild
+.cxx/
+*.keystore
+!debug.keystore
 
 # Symbolication related
 app.*.symbols
@@ -75,4 +111,24 @@ app.*.map.json
 # Exceptions to above rules.
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
+# Documentos grandes (não versionar)
+*.pdf
+*.docx
+*.doc
+*.xlsx
+*.xls
+*.pptx
+*.ppt
+
+# Arquivos de contrato/documentação
+**/Contrato*.pdf
+**/Documento*.docx
+**/Briefing*.pdf
+**/CHECKLIST.pdf
+
+# Arquivos de build grandes
+*.zip
+*.rar
+*.7z
+*.tar.gz
 
