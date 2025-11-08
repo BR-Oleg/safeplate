@@ -1,0 +1,93 @@
+name: Build iOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+
+env:
+  FLUTTER_VERSION: '3.19.0'
+
+jobs:
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Install iOS dependencies
+        working-directory: ios
+        run: |
+          pod install
+          pod repo update
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Verify Flutter installation
+        run: flutter doctor -v
+
+      - name: Build iOS (no codesign - para testes gratuitos)
+        run: flutter build ios --release --no-codesign
+        # Este build não requer conta Apple Developer paga
+        # Pode ser instalado via AltStore/Sideloadly (expira em 7 dias)
+
+      - name: Create IPA Archive (para AltStore/Sideloadly)
+        run: |
+          echo "📦 Criando IPA para instalação via AltStore/Sideloadly..."
+          
+          # Criar diretório Payload
+          mkdir -p build/ios/Payload
+          
+          # Copiar o app para Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/Payload/
+          
+          # Criar o IPA
+          cd build/ios
+          zip -r PratoSeguro-ios-${{ github.run_number }}.ipa Payload/
+          
+          # Mover para raiz do build
+          mv PratoSeguro-ios-${{ github.run_number }}.ipa ../../
+          
+          echo "✅ IPA criado: PratoSeguro-ios-${{ github.run_number }}.ipa"
+          ls -lh PratoSeguro-ios-${{ github.run_number }}.ipa || echo "IPA não encontrado"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ github.run_number }}
+          path: |
+            build/ios/iphoneos/Runner.app
+            PratoSeguro-ios-${{ github.run_number }}.ipa
+          retention-days: 30
+
+      - name: Build info
+        run: |
+          echo "Build completed!"
+          echo "Flutter version: $(flutter --version)"
+          ls -la build/ios/iphoneos/ || echo "Build directory not found"
+

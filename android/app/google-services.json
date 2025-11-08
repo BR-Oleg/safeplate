@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "476899420653",
+    "project_id": "safeplate-a14e9",
+    "storage_bucket": "safeplate-a14e9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:476899420653:android:fcd5a28dc225e9ae03dfe4",
+        "android_client_info": {
+          "package_name": "com.safeplate.safeplate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhAWZ61YF4Qhl_GJjRl6avMpkUZuK6n8k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
