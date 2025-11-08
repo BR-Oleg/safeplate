@@ -22,7 +22,7 @@ dependencies:
   google_sign_in: ^6.1.6
   
   # Mapa - Mapbox
-  mapbox_maps_flutter: ^2.12.0
+  mapbox_maps_flutter: ^2.3.0
   
   # Localização
   geolocator: ^10.1.0
