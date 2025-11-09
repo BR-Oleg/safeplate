@@ -54,11 +54,22 @@ jobs:
           }
           echo "$OUTPUT"
 
+      - name: Generate iOS files (Flutter)
+        run: |
+          # Garantir que os arquivos iOS sejam gerados
+          flutter precache --ios || true
+
       - name: Install iOS dependencies
         working-directory: ios
         run: |
-          pod install
-          pod repo update
+          # Verificar se Podfile existe
+          if [ ! -f "Podfile" ]; then
+            echo "❌ Podfile não encontrado! Criando..."
+            # O Podfile já deve estar no repositório, mas vamos verificar
+            exit 1
+          fi
+          echo "✅ Podfile encontrado, instalando pods..."
+          pod install --repo-update
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
