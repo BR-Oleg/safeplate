@@ -32,7 +32,7 @@ jobs:
           sudo gem install cocoapods
           pod --version
 
-      # ADICIONADO: Limpeza profunda de cache do CocoaPods antes do 'flutter clean'
+      # Adicionado: Limpeza profunda de cache do CocoaPods antes do 'flutter clean' (para garantir ambiente limpo)
       - name: Clean CocoaPods Cache
         run: |
           pod cache clean --all || true
@@ -68,11 +68,9 @@ jobs:
           # Verificar se Podfile existe
           if [ ! -f "Podfile" ]; then
             echo "❌ Podfile não encontrado! Criando..."
-            # O Podfile já deve estar no repositório, mas vamos verificar
             exit 1
           fi
           echo "✅ Podfile encontrado, instalando pods..."
-          # Reinstalação de pods no diretório correto
           pod install --repo-update
 
       - name: Setup Xcode
@@ -94,8 +92,6 @@ jobs:
           xcrun simctl list devices available | grep -i "iphone" || echo "Nenhum iPhone encontrado"
           
           # Tentar encontrar iPhone Pro primeiro (qualquer versão), depois qualquer iPhone
-          # Extrair o UDID (identificador único) do simulador
-          # Formato da linha: "    iPhone 16 Pro (A95FF35F-EA71-4924-9A09-4C490F6F0FC0) (Shutdown)"
           DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone.*Pro" | head -1)
           
           # Se não encontrou Pro, procurar qualquer iPhone
@@ -103,7 +99,7 @@ jobs:
             DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone" | head -1)
           fi
           
-          # Extrair UDID da linha (está entre parênteses, antes do status)
+          # Extrair UDID
           DEVICE_UDID=$(echo "$DEVICE_LINE" | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1)
           
           if [ -z "$DEVICE_UDID" ]; then
@@ -113,35 +109,28 @@ jobs:
             exit 1
           fi
           
-          # Obter o nome completo do dispositivo da linha já capturada
-          # Formato: "    iPhone 16 Pro (A95FF35F-...)"
+          # Obter o nome completo do dispositivo
           DEVICE_NAME=$(echo "$DEVICE_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
-          
-          # Se não conseguiu extrair o nome, tentar pelo UDID
           if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
             DEVICE_FULL_LINE=$(xcrun simctl list devices | grep "$DEVICE_UDID")
             DEVICE_NAME=$(echo "$DEVICE_FULL_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
           fi
-          
-          # Se ainda não conseguiu, usar uma descrição genérica
           if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
             DEVICE_NAME="iPhone Simulator"
           fi
           
           echo "✅ Simulador selecionado: $DEVICE_NAME (UDID: $DEVICE_UDID)"
           
-          # Verificar se já está iniciado
+          # Verificar se já está iniciado e iniciar se necessário
           BOOTED=$(xcrun simctl list devices | grep "$DEVICE_UDID" | grep "Booted" || echo "")
           
           if [ -z "$BOOTED" ]; then
             echo "🚀 Iniciando simulador $DEVICE_NAME..."
-            # Tentar iniciar pelo UDID (mais confiável)
             xcrun simctl boot "$DEVICE_UDID" || {
               echo "⚠️ Erro ao iniciar pelo UDID, aguardando e tentando novamente..."
               sleep 3
               xcrun simctl boot "$DEVICE_UDID" || {
                 echo "❌ Falha ao iniciar simulador após múltiplas tentativas"
-                echo "Status do dispositivo:"
                 xcrun simctl list devices | grep "$DEVICE_UDID"
                 exit 1
               }
@@ -151,11 +140,9 @@ jobs:
             echo "✅ Simulador já está iniciado"
           fi
           
-          # Aguardar simulador ficar pronto
+          # Aguardar e verificar status
           echo "⏳ Aguardando simulador ficar pronto (10 segundos)..."
           sleep 10
-          
-          # Verificar status final
           echo "📱 Status do simulador:"
           xcrun simctl list devices | grep "$DEVICE_UDID"
           
@@ -166,34 +153,21 @@ jobs:
       - name: Build app for simulator
         run: |
           echo "🔨 Compilando app para simulador iOS..."
-          # MODIFICADO: Tentar o build e capturar o output e o código de saída
-          OUTPUT=$(flutter build ios --simulator --release 2>&1)
-          EXIT_CODE=$?
           
-          echo "$OUTPUT"
+          # CORREÇÃO: Removido a lógica complexa de tratamento de erro (|| {}). 
+          # Se o 'flutter build' falhar aqui, o GITHUB ACTIONS irá falhar o passo
+          # e mostrar o log completo do Xcode, expondo o erro de compilação real.
+          flutter build ios --simulator --release
           
           # Caminho esperado do artefato de simulador
           SIMULATOR_APP_PATH="build/ios/iphonesimulator/Runner.app"
           
-          # Se o build falhou (EXIT_CODE != 0)
-          if [ $EXIT_CODE -ne 0 ]; then
-            # Verificar se a falha é *apenas* o aviso do Android embedding E se o arquivo foi criado (caso a falha seja um falso positivo)
-            if echo "$OUTPUT" | grep -q "Android embedding" && [ -d "$SIMULATOR_APP_PATH" ]; then
-              echo "⚠️ Aviso do Android embedding detectado, mas build do simulador criado com sucesso."
-              echo "✅ Continuando apesar do aviso..."
-              exit 0 # Sucesso, ignorando o erro
-            else
-              echo "❌ Erro fatal durante o build do simulador."
-              echo "❌ Build iOS não foi criado ou erro não relacionado ao Android embedding, falhando..."
-              exit $EXIT_CODE # Falha, mantendo o código de saída original
-            fi
-          fi
-          
-          # Se o build foi bem-sucedido (EXIT_CODE == 0)
+          # Verificar se o build foi bem-sucedido (se chegou aqui, o comando 'flutter build' teve sucesso ou ignorou um aviso)
           if [ -d "$SIMULATOR_APP_PATH" ]; then
             echo "✅ Build iOS para simulador criado com sucesso!"
           else
             echo "❌ Build iOS não foi criado (diretório Runner.app ausente), falhando..."
+            # Força falha se o artefato esperado não foi criado
             exit 1
           fi
           
@@ -204,7 +178,7 @@ jobs:
           echo "📦 Instalando app no simulador..."
           # Usar o UDID salvo ou 'booted' como fallback
           DEVICE_ID=${DEVICE_UDID:-booted}
-          # CORRIGIDO: Usando 'iphonesimulator'
+          # CORREÇÃO: O caminho para build de simulador é 'iphonesimulator' (antes estava 'iphoneos')
           xcrun simctl install "$DEVICE_ID" build/ios/iphonesimulator/Runner.app || {
             echo "⚠️ Tentando instalar no dispositivo booted..."
             xcrun simctl install booted build/ios/iphonesimulator/Runner.app || {
