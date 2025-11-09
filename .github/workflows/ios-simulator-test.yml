@@ -32,8 +32,7 @@ jobs:
           sudo gem install cocoapods
           pod --version
 
-      # Adicionado: Limpeza profunda de cache do CocoaPods antes do 'flutter clean' (para garantir ambiente limpo)
-      - name: Clean CocoaPods Cache
+      - name: Clean CocoaPods Cache (Added for stability)
         run: |
           pod cache clean --all || true
 
@@ -154,20 +153,19 @@ jobs:
         run: |
           echo "🔨 Compilando app para simulador iOS..."
           
-          # CORREÇÃO: Removido a lógica complexa de tratamento de erro (|| {}). 
-          # Se o 'flutter build' falhar aqui, o GITHUB ACTIONS irá falhar o passo
-          # e mostrar o log completo do Xcode, expondo o erro de compilação real.
+          # CORREÇÃO: Removida a lógica complexa de tratamento de erro. 
+          # O comando 'flutter build' falhará se houver um erro de compilação real, 
+          # e o GitHub Actions exibirá o log completo do erro, permitindo a correção.
           flutter build ios --simulator --release
           
           # Caminho esperado do artefato de simulador
           SIMULATOR_APP_PATH="build/ios/iphonesimulator/Runner.app"
           
-          # Verificar se o build foi bem-sucedido (se chegou aqui, o comando 'flutter build' teve sucesso ou ignorou um aviso)
+          # Verificar se o build foi bem-sucedido
           if [ -d "$SIMULATOR_APP_PATH" ]; then
             echo "✅ Build iOS para simulador criado com sucesso!"
           else
             echo "❌ Build iOS não foi criado (diretório Runner.app ausente), falhando..."
-            # Força falha se o artefato esperado não foi criado
             exit 1
           fi
           
@@ -178,7 +176,7 @@ jobs:
           echo "📦 Instalando app no simulador..."
           # Usar o UDID salvo ou 'booted' como fallback
           DEVICE_ID=${DEVICE_UDID:-booted}
-          # CORREÇÃO: O caminho para build de simulador é 'iphonesimulator' (antes estava 'iphoneos')
+          # CORREÇÃO: O caminho correto para build de simulador é 'iphonesimulator' (não 'iphoneos')
           xcrun simctl install "$DEVICE_ID" build/ios/iphonesimulator/Runner.app || {
             echo "⚠️ Tentando instalar no dispositivo booted..."
             xcrun simctl install booted build/ios/iphonesimulator/Runner.app || {
