@@ -13,7 +13,7 @@ env:
 jobs:
   test-ios-simulator:
     name: Test iOS Simulator
-    runs-on: macos-latest
+    runs-on: macos-14
     timeout-minutes: 30
 
     steps:
@@ -64,77 +64,62 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.1'
+          xcode-version: '15.4'
 
       - name: List available simulators
         run: |
           echo "📱 Listando simuladores disponíveis..."
           xcrun simctl list devices available
 
-      - name: Find and Boot iPhone Simulator
+      - name: List runtimes and device types
         run: |
-          echo "🔍 Procurando simulador iPhone disponível..."
-          
-          # Listar todos os simuladores disponíveis
-          echo "📱 Simuladores disponíveis:"
-          xcrun simctl list devices available | grep -i "iphone" || echo "Nenhum iPhone encontrado"
-          
-          # Tentar encontrar iPhone Pro primeiro (qualquer versão), depois qualquer iPhone
-          DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone.*Pro" | head -1)
-          
-          # Se não encontrou Pro, procurar qualquer iPhone
-          if [ -z "$DEVICE_LINE" ]; then
-            DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone" | head -1)
-          fi
-          
-          # Extrair UDID
-          DEVICE_UDID=$(echo "$DEVICE_LINE" | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1)
-          
-          if [ -z "$DEVICE_UDID" ]; then
-            echo "❌ Nenhum simulador iPhone encontrado!"
-            echo "Listando todos os dispositivos disponíveis:"
-            xcrun simctl list devices available
+          echo "🧩 Runtimes disponíveis:"
+          xcrun simctl list runtimes
+          echo "🧩 Tipos de dispositivo:"
+          xcrun simctl list devicetypes
+
+      - name: Create and Boot iPhone Simulator (available runtime)
+        run: |
+          echo "🔍 Selecionando runtime iOS disponível..."
+          xcrun simctl list runtimes
+          RUNTIME_ID=$(xcrun simctl list runtimes | awk -F' - ' '/iOS / && $0 !~ /unavailable/ {print $NF}' | head -1)
+          if [ -z "$RUNTIME_ID" ]; then
+            echo "❌ Nenhum runtime iOS disponível encontrado no Xcode atual."
             exit 1
           fi
-          
-          # Obter o nome completo do dispositivo
-          DEVICE_NAME=$(echo "$DEVICE_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
-          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
-            DEVICE_FULL_LINE=$(xcrun simctl list devices | grep "$DEVICE_UDID")
-            DEVICE_NAME=$(echo "$DEVICE_FULL_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
+          echo "✅ Runtime selecionado: $RUNTIME_ID"
+
+          echo "🔍 Selecionando device type..."
+          DTYPE_ID=$(xcrun simctl list devicetypes | awk -F' - ' '/iPhone 16 Pro/ {print $2}' | head -1)
+          if [ -z "$DTYPE_ID" ]; then
+            DTYPE_ID=$(xcrun simctl list devicetypes | awk -F' - ' '/iPhone 15/ {print $2}' | head -1)
           fi
-          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
-            DEVICE_NAME="iPhone Simulator"
+          if [ -z "$DTYPE_ID" ]; then
+            DTYPE_ID=$(xcrun simctl list devicetypes | awk -F' - ' '/iPhone/ {print $2}' | head -1)
           fi
-          
-          echo "✅ Simulador selecionado: $DEVICE_NAME (UDID: $DEVICE_UDID)"
-          
-          # Verificar se já está iniciado e iniciar se necessário
-          BOOTED=$(xcrun simctl list devices | grep "$DEVICE_UDID" | grep "Booted" || echo "")
-          
-          if [ -z "$BOOTED" ]; then
-            echo "🚀 Iniciando simulador $DEVICE_NAME..."
-            xcrun simctl boot "$DEVICE_UDID" || {
-              echo "⚠️ Erro ao iniciar pelo UDID, aguardando e tentando novamente..."
-              sleep 3
-              xcrun simctl boot "$DEVICE_UDID" || {
-                echo "❌ Falha ao iniciar simulador após múltiplas tentativas"
-                xcrun simctl list devices | grep "$DEVICE_UDID"
-                exit 1
-              }
-            }
-            echo "✅ Simulador iniciado com sucesso"
-          else
-            echo "✅ Simulador já está iniciado"
+          if [ -z "$DTYPE_ID" ]; then
+            echo "❌ Nenhum device type iPhone encontrado."
+            exit 1
           fi
-          
-          # Aguardar e verificar status
-          echo "⏳ Aguardando simulador ficar pronto (10 segundos)..."
-          sleep 10
-          echo "📱 Status do simulador:"
-          xcrun simctl list devices | grep "$DEVICE_UDID"
-          
-          # Salvar UDID e nome para próximos passos
+          echo "✅ Device type: $DTYPE_ID"
+
+          DEVICE_NAME="CI iPhone"
+          echo "🆕 Criando simulador $DEVICE_NAME com $DTYPE_ID e $RUNTIME_ID..."
+          DEVICE_UDID=$(xcrun simctl create "$DEVICE_NAME" "$DTYPE_ID" "$RUNTIME_ID")
+          if [ -z "$DEVICE_UDID" ]; then
+            echo "❌ Falha ao criar simulador."
+            exit 1
+          fi
+          echo "✅ Simulador criado: $DEVICE_UDID"
+
+          echo "🚀 Iniciando simulador..."
+          xcrun simctl boot "$DEVICE_UDID" || true
+
+          # Aguardar boot
+          echo "⏳ Aguardando simulador ficar pronto (15s)..."
+          sleep 15
+          xcrun simctl list devices | grep "$DEVICE_UDID" || true
+
           echo "DEVICE_UDID=$DEVICE_UDID" >> $GITHUB_ENV
           echo "DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
 
@@ -150,7 +135,7 @@ jobs:
             -scheme Runner \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "id=${DEVICE_UDID}" \
             -derivedDataPath build/ios \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
           
