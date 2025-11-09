@@ -148,7 +148,7 @@ jobs:
           
           # Forçar build ignorando avisos de embedding (bug do Flutter)
           set +e
-          flutter build ios --simulator --release --no-pub 2>&1 | tee build.log
+          flutter build ios --simulator --debug 2>&1 | tee build.log
           BUILD_RESULT=$?
           set -e
           
