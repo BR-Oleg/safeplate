@@ -76,12 +76,70 @@ jobs:
 
       - name: List available simulators
         run: |
+          echo "📱 Listando simuladores disponíveis..."
           xcrun simctl list devices available
 
-      - name: Boot iPhone 15 Pro Simulator
+      - name: Find and Boot iPhone Simulator
         run: |
-          xcrun simctl boot "iPhone 15 Pro" || echo "Simulator already booted"
-          xcrun simctl list devices | grep "iPhone 15 Pro"
+          echo "🔍 Procurando simulador iPhone disponível..."
+          
+          # Listar todos os simuladores disponíveis
+          echo "📱 Simuladores disponíveis:"
+          xcrun simctl list devices available | grep -i "iphone" || echo "Nenhum iPhone encontrado"
+          
+          # Tentar encontrar iPhone 15 Pro primeiro, depois qualquer iPhone recente
+          # Extrair o UDID (identificador único) do simulador
+          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 15 Pro" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
+          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 15" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
+          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 14" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
+          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1)
+          
+          if [ -z "$DEVICE_UDID" ]; then
+            echo "❌ Nenhum simulador iPhone encontrado!"
+            echo "Listando todos os dispositivos disponíveis:"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          
+          # Obter o nome do dispositivo pelo UDID
+          DEVICE_NAME=$(xcrun simctl list devices | grep "$DEVICE_UDID" | sed 's/.*"\(.*\)".*/\1/' | head -1)
+          
+          echo "✅ Simulador selecionado: $DEVICE_NAME (UDID: $DEVICE_UDID)"
+          
+          # Verificar se já está iniciado
+          BOOTED=$(xcrun simctl list devices | grep "$DEVICE_UDID" | grep "Booted" || echo "")
+          
+          if [ -z "$BOOTED" ]; then
+            echo "🚀 Iniciando simulador $DEVICE_NAME..."
+            # Tentar iniciar pelo UDID (mais confiável)
+            xcrun simctl boot "$DEVICE_UDID" || {
+              echo "⚠️ Erro ao iniciar pelo UDID, tentando pelo nome..."
+              xcrun simctl boot "$DEVICE_NAME" || {
+                echo "⚠️ Erro ao iniciar simulador, aguardando e tentando novamente..."
+                sleep 3
+                xcrun simctl boot "$DEVICE_UDID" || {
+                  echo "❌ Falha ao iniciar simulador após múltiplas tentativas"
+                  xcrun simctl list devices | grep "$DEVICE_UDID"
+                  exit 1
+                }
+              }
+            }
+            echo "✅ Simulador iniciado com sucesso"
+          else
+            echo "✅ Simulador já está iniciado"
+          fi
+          
+          # Aguardar simulador ficar pronto
+          echo "⏳ Aguardando simulador ficar pronto (10 segundos)..."
+          sleep 10
+          
+          # Verificar status final
+          echo "📱 Status do simulador:"
+          xcrun simctl list devices | grep "$DEVICE_UDID"
+          
+          # Salvar UDID e nome para próximos passos
+          echo "DEVICE_UDID=$DEVICE_UDID" >> $GITHUB_ENV
+          echo "DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
 
       - name: Build app for simulator
         run: |
@@ -92,13 +150,28 @@ jobs:
       - name: Install app on simulator
         run: |
           echo "📦 Instalando app no simulador..."
-          xcrun simctl install booted build/ios/iphoneos/Runner.app || echo "App installation attempted"
+          # Usar o UDID salvo ou 'booted' como fallback
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          xcrun simctl install "$DEVICE_ID" build/ios/iphoneos/Runner.app || {
+            echo "⚠️ Tentando instalar no dispositivo booted..."
+            xcrun simctl install booted build/ios/iphoneos/Runner.app || {
+              echo "❌ Falha ao instalar app"
+              exit 1
+            }
+          }
           echo "✅ App instalado no simulador"
 
       - name: Launch app on simulator
         run: |
           echo "🚀 Iniciando app no simulador..."
-          xcrun simctl launch booted com.safeplate.safeplate || echo "App launch attempted"
+          # Usar o UDID salvo ou 'booted' como fallback
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          xcrun simctl launch "$DEVICE_ID" com.safeplate.safeplate || {
+            echo "⚠️ Tentando iniciar no dispositivo booted..."
+            xcrun simctl launch booted com.safeplate.safeplate || {
+              echo "⚠️ App pode já estar rodando ou houve erro ao iniciar"
+            }
+          }
           echo "✅ App iniciado (ou já estava rodando)"
 
       - name: Take screenshots
@@ -159,7 +232,11 @@ jobs:
       - name: Display simulator info
         run: |
           echo "📱 Informações do Simulador:"
-          xcrun simctl list devices | grep "iPhone 15 Pro"
+          if [ -n "$DEVICE_UDID" ]; then
+            xcrun simctl list devices | grep "$DEVICE_UDID"
+          else
+            xcrun simctl list devices | grep "iPhone"
+          fi
           echo ""
           echo "✅ App instalado e testado no simulador!"
           echo "📸 Screenshots disponíveis nos artifacts"
