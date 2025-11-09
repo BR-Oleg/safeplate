@@ -142,30 +142,31 @@ jobs:
         run: |
           echo "🔨 Compilando app para simulador iOS..."
           
-          # Limpar cache e forçar build completo
-          flutter clean
-          rm -rf build/ 2>/dev/null || true
-          
-          # Forçar build ignorando avisos de embedding (bug do Flutter)
-          set +e
-          flutter build ios --simulator --debug 2>&1 | tee build.log
-          BUILD_RESULT=$?
+          # Compilar com Xcode diretamente (Debug para simulador)
           set -e
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=${DEVICE_UDID}" \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
           
-          echo "📋 Build completed with exit code: $BUILD_RESULT"
-          echo "📋 Build log:"
-          tail -20 build.log
+          # Caminho do app gerado pelo Xcode para simulador (Debug)
+          SIMULATOR_APP_PATH="build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
           
           # Verificar se o artefato foi criado
-          if [ -d "build/ios/iphonesimulator/Runner.app" ]; then
+          if [ -d "$SIMULATOR_APP_PATH" ]; then
             echo "✅ Build iOS para simulador criado com sucesso!"
             echo "✅ App compilado para simulador"
           else
             echo "❌ ERRO: Build falhou - Runner.app não foi criado"
             echo "📋 Conteúdo do diretório build/:"
-            find build -type f 2>/dev/null | head -20 || echo "Diretório build/ não existe"
-            echo "📋 Últimas linhas do log:"
-            tail -50 build.log
+            find build -type f 2>/dev/null | head -50 || echo "Diretório build/ não existe"
+            echo "📋 Últimas linhas do xcodebuild.log:"
+            tail -100 xcodebuild.log || true
             exit 1
           fi
 
@@ -174,10 +175,10 @@ jobs:
           echo "📦 Instalando app no simulador..."
           # Usar o UDID salvo ou 'booted' como fallback
           DEVICE_ID=${DEVICE_UDID:-booted}
-          # CORREÇÃO: O caminho correto para build de simulador é 'iphonesimulator' (não 'iphoneos')
-          xcrun simctl install "$DEVICE_ID" build/ios/iphonesimulator/Runner.app || {
+          # Instalar artefato gerado pelo Xcode (Debug-iphonesimulator)
+          xcrun simctl install "$DEVICE_ID" build/ios/Build/Products/Debug-iphonesimulator/Runner.app || {
             echo "⚠️ Tentando instalar no dispositivo booted..."
-            xcrun simctl install booted build/ios/iphonesimulator/Runner.app || {
+            xcrun simctl install booted build/ios/Build/Products/Debug-iphonesimulator/Runner.app || {
               echo "❌ Falha ao instalar app"
               exit 1
             }
