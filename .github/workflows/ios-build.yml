@@ -15,7 +15,7 @@ env:
 jobs:
   build-ios:
     name: Build iOS
-    runs-on: macos-latest
+    runs-on: macos-14
     timeout-minutes: 60
 
     steps:
@@ -63,31 +63,39 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: latest-stable
+          xcode-version: '15.4'
 
       - name: Verify Flutter installation
         run: flutter doctor -v
 
-      - name: Build iOS (no codesign - para testes gratuitos)
+      - name: Build iOS (xcodebuild Release, no codesign)
         run: |
-          echo "🔨 Compilando app iOS..."
-          
-          # Executar build ignorando exit code (avisos não devem falhar o workflow)
-          flutter build ios --release --no-codesign || true
-          
-          # Verificar se o artefato foi criado (validação real de sucesso)
-          if [ -d "build/ios/iphoneos/Runner.app" ]; then
-            echo "✅ Build iOS criado com sucesso!"
-            echo "✅ Build iOS concluído"
+          echo "🔨 Compilando app iOS (xcodebuild Release, iphoneos)..."
+          set -e
+          set -o pipefail
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
+
+          APP_PATH="build/ios/Build/Products/Release-iphoneos/Runner.app"
+          if [ -d "$APP_PATH" ]; then
+            echo "✅ Build iOS criado com sucesso em $APP_PATH"
           else
             echo "❌ ERRO: Build falhou - Runner.app não foi criado"
-            ls -la build/ios/ 2>/dev/null || echo "Diretório build/ios não existe"
+            echo "📋 Conteúdo do diretório build/:"
+            find build -type f | head -100 || echo "Diretório build/ não existe"
+            echo "📋 Últimas linhas do xcodebuild.log:"
+            tail -200 xcodebuild.log || true
             exit 1
           fi
         # Este build não requer conta Apple Developer paga
-        # Pode ser instalado via AltStore/Sideloadly (expira em 7 dias)
+        # Pode ser empacotado para testes manuais
 
-      - name: Create IPA Archive (para AltStore/Sideloadly)
+      - name: Create IPA Archive (para instalação manual)
         run: |
           echo "📦 Criando IPA para instalação via AltStore/Sideloadly..."
           
@@ -95,7 +103,7 @@ jobs:
           mkdir -p build/ios/Payload
           
           # Copiar o app para Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/Payload/
+          cp -r build/ios/Build/Products/Release-iphoneos/Runner.app build/ios/Payload/
           
           # Criar o IPA
           cd build/ios
@@ -112,7 +120,7 @@ jobs:
         with:
           name: ios-build-${{ github.run_number }}
           path: |
-            build/ios/iphoneos/Runner.app
+            build/ios/Build/Products/Release-iphoneos/Runner.app
             PratoSeguro-ios-${{ github.run_number }}.ipa
           retention-days: 30
 
@@ -120,5 +128,5 @@ jobs:
         run: |
           echo "Build completed!"
           echo "Flutter version: $(flutter --version)"
-          ls -la build/ios/iphoneos/ || echo "Build directory not found"
+          ls -la build/ios/Build/Products/Release-iphoneos/ || echo "Build directory not found"
 
