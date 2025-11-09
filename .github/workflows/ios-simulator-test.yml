@@ -142,16 +142,30 @@ jobs:
         run: |
           echo "🔨 Compilando app para simulador iOS..."
           
-          # Executar build ignorando exit code (avisos não devem falhar o workflow)
-          flutter build ios --simulator --release || true
+          # Limpar cache e forçar build completo
+          flutter clean
+          rm -rf build/ 2>/dev/null || true
           
-          # Verificar se o artefato foi criado (validação real de sucesso)
+          # Forçar build ignorando avisos de embedding (bug do Flutter)
+          set +e
+          flutter build ios --simulator --release --no-pub 2>&1 | tee build.log
+          BUILD_RESULT=$?
+          set -e
+          
+          echo "📋 Build completed with exit code: $BUILD_RESULT"
+          echo "📋 Build log:"
+          tail -20 build.log
+          
+          # Verificar se o artefato foi criado
           if [ -d "build/ios/iphonesimulator/Runner.app" ]; then
             echo "✅ Build iOS para simulador criado com sucesso!"
             echo "✅ App compilado para simulador"
           else
             echo "❌ ERRO: Build falhou - Runner.app não foi criado"
-            ls -la build/ios/ 2>/dev/null || echo "Diretório build/ios não existe"
+            echo "📋 Conteúdo do diretório build/:"
+            find build -type f 2>/dev/null | head -20 || echo "Diretório build/ não existe"
+            echo "📋 Últimas linhas do log:"
+            tail -50 build.log
             exit 1
           fi
 

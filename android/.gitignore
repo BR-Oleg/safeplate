@@ -4,7 +4,8 @@ gradle-wrapper.jar
 /gradlew
 /gradlew.bat
 /local.properties
-GeneratedPluginRegistrant.java
+# Exceção temporária para auditoria do embedding V2
+!app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 .cxx/
 
 # Remember to never publicly share your keystore.
