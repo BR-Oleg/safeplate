@@ -87,12 +87,18 @@ jobs:
           echo "📱 Simuladores disponíveis:"
           xcrun simctl list devices available | grep -i "iphone" || echo "Nenhum iPhone encontrado"
           
-          # Tentar encontrar iPhone 15 Pro primeiro, depois qualquer iPhone recente
+          # Tentar encontrar iPhone Pro primeiro (qualquer versão), depois qualquer iPhone
           # Extrair o UDID (identificador único) do simulador
-          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 15 Pro" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
-          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 15" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
-          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone 14" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1) || \
-          DEVICE_UDID=$(xcrun simctl list devices available | grep -i "iPhone" | head -1 | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1)
+          # Formato da linha: "    iPhone 16 Pro (A95FF35F-EA71-4924-9A09-4C490F6F0FC0) (Shutdown)"
+          DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone.*Pro" | head -1)
+          
+          # Se não encontrou Pro, procurar qualquer iPhone
+          if [ -z "$DEVICE_LINE" ]; then
+            DEVICE_LINE=$(xcrun simctl list devices available | grep -i "iPhone" | head -1)
+          fi
+          
+          # Extrair UDID da linha (está entre parênteses, antes do status)
+          DEVICE_UDID=$(echo "$DEVICE_LINE" | grep -oE '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}' | head -1)
           
           if [ -z "$DEVICE_UDID" ]; then
             echo "❌ Nenhum simulador iPhone encontrado!"
@@ -101,8 +107,20 @@ jobs:
             exit 1
           fi
           
-          # Obter o nome do dispositivo pelo UDID
-          DEVICE_NAME=$(xcrun simctl list devices | grep "$DEVICE_UDID" | sed 's/.*"\(.*\)".*/\1/' | head -1)
+          # Obter o nome completo do dispositivo da linha já capturada
+          # Formato: "    iPhone 16 Pro (A95FF35F-...)"
+          DEVICE_NAME=$(echo "$DEVICE_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
+          
+          # Se não conseguiu extrair o nome, tentar pelo UDID
+          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
+            DEVICE_FULL_LINE=$(xcrun simctl list devices | grep "$DEVICE_UDID")
+            DEVICE_NAME=$(echo "$DEVICE_FULL_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
+          fi
+          
+          # Se ainda não conseguiu, usar uma descrição genérica
+          if [ -z "$DEVICE_NAME" ] || [ "$DEVICE_NAME" = "$DEVICE_UDID" ]; then
+            DEVICE_NAME="iPhone Simulator"
+          fi
           
           echo "✅ Simulador selecionado: $DEVICE_NAME (UDID: $DEVICE_UDID)"
           
@@ -113,15 +131,13 @@ jobs:
             echo "🚀 Iniciando simulador $DEVICE_NAME..."
             # Tentar iniciar pelo UDID (mais confiável)
             xcrun simctl boot "$DEVICE_UDID" || {
-              echo "⚠️ Erro ao iniciar pelo UDID, tentando pelo nome..."
-              xcrun simctl boot "$DEVICE_NAME" || {
-                echo "⚠️ Erro ao iniciar simulador, aguardando e tentando novamente..."
-                sleep 3
-                xcrun simctl boot "$DEVICE_UDID" || {
-                  echo "❌ Falha ao iniciar simulador após múltiplas tentativas"
-                  xcrun simctl list devices | grep "$DEVICE_UDID"
-                  exit 1
-                }
+              echo "⚠️ Erro ao iniciar pelo UDID, aguardando e tentando novamente..."
+              sleep 3
+              xcrun simctl boot "$DEVICE_UDID" || {
+                echo "❌ Falha ao iniciar simulador após múltiplas tentativas"
+                echo "Status do dispositivo:"
+                xcrun simctl list devices | grep "$DEVICE_UDID"
+                exit 1
               }
             }
             echo "✅ Simulador iniciado com sucesso"
