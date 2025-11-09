@@ -32,6 +32,11 @@ jobs:
           sudo gem install cocoapods
           pod --version
 
+      # ADICIONADO: Limpeza profunda de cache do CocoaPods antes do 'flutter clean'
+      - name: Clean CocoaPods Cache
+        run: |
+          pod cache clean --all || true
+
       - name: Clean Flutter (resolve Android embedding V2)
         run: flutter clean || true
 
@@ -67,6 +72,7 @@ jobs:
             exit 1
           fi
           echo "✅ Podfile encontrado, instalando pods..."
+          # Reinstalação de pods no diretório correto
           pod install --repo-update
 
       - name: Setup Xcode
@@ -160,16 +166,16 @@ jobs:
       - name: Build app for simulator
         run: |
           echo "🔨 Compilando app para simulador iOS..."
-          # 1. Tentar o build e capturar o output e o código de saída
+          # MODIFICADO: Tentar o build e capturar o output e o código de saída
           OUTPUT=$(flutter build ios --simulator --release 2>&1)
           EXIT_CODE=$?
           
           echo "$OUTPUT"
           
-          # 2. Caminho esperado do artefato de simulador
+          # Caminho esperado do artefato de simulador
           SIMULATOR_APP_PATH="build/ios/iphonesimulator/Runner.app"
           
-          # 3. Se o build falhou (EXIT_CODE != 0)
+          # Se o build falhou (EXIT_CODE != 0)
           if [ $EXIT_CODE -ne 0 ]; then
             # Verificar se a falha é *apenas* o aviso do Android embedding E se o arquivo foi criado (caso a falha seja um falso positivo)
             if echo "$OUTPUT" | grep -q "Android embedding" && [ -d "$SIMULATOR_APP_PATH" ]; then
@@ -183,7 +189,7 @@ jobs:
             fi
           fi
           
-          # 4. Se o build foi bem-sucedido (EXIT_CODE == 0)
+          # Se o build foi bem-sucedido (EXIT_CODE == 0)
           if [ -d "$SIMULATOR_APP_PATH" ]; then
             echo "✅ Build iOS para simulador criado com sucesso!"
           else
@@ -198,7 +204,7 @@ jobs:
           echo "📦 Instalando app no simulador..."
           # Usar o UDID salvo ou 'booted' como fallback
           DEVICE_ID=${DEVICE_UDID:-booted}
-          # CORRIGIDO: Deve ser 'iphonesimulator', não 'iphoneos'
+          # CORRIGIDO: Usando 'iphonesimulator'
           xcrun simctl install "$DEVICE_ID" build/ios/iphonesimulator/Runner.app || {
             echo "⚠️ Tentando instalar no dispositivo booted..."
             xcrun simctl install booted build/ios/iphonesimulator/Runner.app || {
