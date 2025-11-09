@@ -160,28 +160,37 @@ jobs:
       - name: Build app for simulator
         run: |
           echo "🔨 Compilando app para simulador iOS..."
-          # Ignorar avisos do Android embedding durante build iOS
-          OUTPUT=$(flutter build ios --simulator --release 2>&1) || {
-            EXIT_CODE=$?
-            echo "$OUTPUT"
-            # Verificar se é apenas o aviso do Android embedding V2
-            if echo "$OUTPUT" | grep -q "Android embedding"; then
-              echo "⚠️ Aviso do Android embedding detectado, mas isso não afeta o build iOS"
-              echo "✅ Continuando apesar do aviso (build iOS não é afetado)..."
-              # Verificar se o build iOS realmente foi criado
-              if [ -d "build/ios/iphoneos" ] || [ -d "build/ios/iphonesimulator" ]; then
-                echo "✅ Build iOS criado com sucesso!"
-                exit 0
-              else
-                echo "❌ Build iOS não foi criado, falhando..."
-                exit $EXIT_CODE
-              fi
-            else
-              echo "❌ Erro diferente do Android embedding, falhando..."
-              exit $EXIT_CODE
-            fi
-          }
+          # 1. Tentar o build e capturar o output e o código de saída
+          OUTPUT=$(flutter build ios --simulator --release 2>&1)
+          EXIT_CODE=$?
+          
           echo "$OUTPUT"
+          
+          # 2. Caminho esperado do artefato de simulador
+          SIMULATOR_APP_PATH="build/ios/iphonesimulator/Runner.app"
+          
+          # 3. Se o build falhou (EXIT_CODE != 0)
+          if [ $EXIT_CODE -ne 0 ]; then
+            # Verificar se a falha é *apenas* o aviso do Android embedding E se o arquivo foi criado (caso a falha seja um falso positivo)
+            if echo "$OUTPUT" | grep -q "Android embedding" && [ -d "$SIMULATOR_APP_PATH" ]; then
+              echo "⚠️ Aviso do Android embedding detectado, mas build do simulador criado com sucesso."
+              echo "✅ Continuando apesar do aviso..."
+              exit 0 # Sucesso, ignorando o erro
+            else
+              echo "❌ Erro fatal durante o build do simulador."
+              echo "❌ Build iOS não foi criado ou erro não relacionado ao Android embedding, falhando..."
+              exit $EXIT_CODE # Falha, mantendo o código de saída original
+            fi
+          fi
+          
+          # 4. Se o build foi bem-sucedido (EXIT_CODE == 0)
+          if [ -d "$SIMULATOR_APP_PATH" ]; then
+            echo "✅ Build iOS para simulador criado com sucesso!"
+          else
+            echo "❌ Build iOS não foi criado (diretório Runner.app ausente), falhando..."
+            exit 1
+          fi
+          
           echo "✅ App compilado para simulador"
 
       - name: Install app on simulator
@@ -189,9 +198,10 @@ jobs:
           echo "📦 Instalando app no simulador..."
           # Usar o UDID salvo ou 'booted' como fallback
           DEVICE_ID=${DEVICE_UDID:-booted}
-          xcrun simctl install "$DEVICE_ID" build/ios/iphoneos/Runner.app || {
+          # CORRIGIDO: Deve ser 'iphonesimulator', não 'iphoneos'
+          xcrun simctl install "$DEVICE_ID" build/ios/iphonesimulator/Runner.app || {
             echo "⚠️ Tentando instalar no dispositivo booted..."
-            xcrun simctl install booted build/ios/iphoneos/Runner.app || {
+            xcrun simctl install booted build/ios/iphonesimulator/Runner.app || {
               echo "❌ Falha ao instalar app"
               exit 1
             }
@@ -277,4 +287,3 @@ jobs:
           echo ""
           echo "✅ App instalado e testado no simulador!"
           echo "📸 Screenshots disponíveis nos artifacts"
-
