@@ -82,38 +82,53 @@ jobs:
         run: |
           echo "🔍 Selecionando runtime iOS disponível..."
           xcrun simctl list runtimes
-          RUNTIME_ID=$(xcrun simctl list runtimes | grep -E 'iOS [0-9]+' | grep -v unavailable | grep -o 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]*' | head -1)
-          if [ -z "$RUNTIME_ID" ]; then
+          # Coletar runtimes iOS disponíveis em ordem decrescente (mais novos primeiro)
+          RUNTIMES=$(xcrun simctl list runtimes | grep -E '^iOS [0-9]+' | grep -v unavailable | sed -E 's/.*(com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+).*/\1/' | tail -r)
+          if [ -z "$RUNTIMES" ]; then
             echo "❌ Nenhum runtime iOS disponível encontrado no Xcode atual."
             exit 1
           fi
-          echo "✅ Runtime selecionado: $RUNTIME_ID"
 
-          echo "🔍 Selecionando device type..."
-          DTYPE_ID=$(xcrun simctl list devicetypes | grep -i 'iPhone 16 Pro' | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*' | head -1)
-          if [ -z "$DTYPE_ID" ]; then
-            DTYPE_ID=$(xcrun simctl list devicetypes | grep -i 'iPhone 15 Pro' | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*' | head -1)
-          fi
-          if [ -z "$DTYPE_ID" ]; then
-            DTYPE_ID=$(xcrun simctl list devicetypes | grep -i 'iPhone 15' | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*' | head -1)
-          fi
-          if [ -z "$DTYPE_ID" ]; then
-            DTYPE_ID=$(xcrun simctl list devicetypes | grep -i 'iPhone' | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*' | head -1)
-          fi
-          if [ -z "$DTYPE_ID" ]; then
-            echo "❌ Nenhum device type iPhone encontrado."
+          # Lista de nomes preferidos de iPhone (mais novos primeiro), com fallbacks
+          DEVICE_NAMES=(
+            "iPhone 16 Pro" "iPhone 16"
+            "iPhone 15 Pro" "iPhone 15"
+            "iPhone 14 Pro" "iPhone 14"
+            "iPhone 13 Pro" "iPhone 13"
+            "iPhone SE (3rd generation)" "iPhone 11" "iPhone 8"
+          )
+
+          CREATED=0
+          DEVICE_NAME=""
+          DEVICE_UDID=""
+          SELECTED_RUNTIME=""
+
+          for RUNTIME_ID in $RUNTIMES; do
+            echo "🧪 Tentando runtime: $RUNTIME_ID"
+            for NAME in "${DEVICE_NAMES[@]}"; do
+              # Obter o DeviceType ID a partir do nome
+              DTYPE_ID=$(xcrun simctl list devicetypes | awk -v n="$NAME" 'BEGIN{IGNORECASE=1} index($0,n)==1 { if (match($0, /(com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*)\)/, m)) { print m[1]; exit 0 } }')
+              [ -z "$DTYPE_ID" ] && continue
+              echo "   • Testando device type: $NAME ($DTYPE_ID)"
+              if DEVICE_UDID=$(xcrun simctl create "CI iPhone" "$DTYPE_ID" "$RUNTIME_ID" 2>/dev/null); then
+                CREATED=1
+                DEVICE_NAME="$NAME"
+                SELECTED_RUNTIME="$RUNTIME_ID"
+                break 2
+              else
+                echo "     ↪️ Incompatível: $NAME com $RUNTIME_ID, tentando próximo..."
+              fi
+            done
+          done
+
+          if [ "$CREATED" -ne 1 ] || [ -z "$DEVICE_UDID" ]; then
+            echo "❌ Falha ao criar simulador com qualquer combinação de runtime/device type."
+            echo "ℹ️ Runtimes testados:"; echo "$RUNTIMES"
+            xcrun simctl list devicetypes | grep -i '^iPhone' || true
             exit 1
           fi
-          echo "✅ Device type: $DTYPE_ID"
 
-          DEVICE_NAME="CI iPhone"
-          echo "🆕 Criando simulador $DEVICE_NAME com $DTYPE_ID e $RUNTIME_ID..."
-          DEVICE_UDID=$(xcrun simctl create "$DEVICE_NAME" "$DTYPE_ID" "$RUNTIME_ID")
-          if [ -z "$DEVICE_UDID" ]; then
-            echo "❌ Falha ao criar simulador."
-            exit 1
-          fi
-          echo "✅ Simulador criado: $DEVICE_UDID"
+          echo "✅ Simulador criado: $DEVICE_NAME (UDID: $DEVICE_UDID) com runtime $SELECTED_RUNTIME"
 
           echo "🚀 Iniciando simulador..."
           xcrun simctl boot "$DEVICE_UDID" || true
