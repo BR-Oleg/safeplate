@@ -106,8 +106,13 @@ jobs:
           for RUNTIME_ID in $RUNTIMES; do
             echo "🧪 Tentando runtime: $RUNTIME_ID"
             for NAME in "${DEVICE_NAMES[@]}"; do
-              # Obter o DeviceType ID a partir do nome
-              DTYPE_ID=$(xcrun simctl list devicetypes | awk -v n="$NAME" 'BEGIN{IGNORECASE=1} index($0,n)==1 { if (match($0, /(com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*)\)/, m)) { print m[1]; exit 0 } }')
+              # Obter o DeviceType ID a partir do nome (robusto em macOS)
+              LINE=$(xcrun simctl list devicetypes | grep -F -i "$NAME (" | head -1)
+              if [ -n "$LINE" ]; then
+                DTYPE_ID=$(echo "$LINE" | sed -n 's/.*(com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*).*/\1/p')
+              else
+                DTYPE_ID=""
+              fi
               [ -z "$DTYPE_ID" ] && continue
               echo "   • Testando device type: $NAME ($DTYPE_ID)"
               if DEVICE_UDID=$(xcrun simctl create "CI iPhone" "$DTYPE_ID" "$RUNTIME_ID" 2>/dev/null); then
