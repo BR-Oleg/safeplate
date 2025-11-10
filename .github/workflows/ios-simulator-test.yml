@@ -109,7 +109,7 @@ jobs:
               # Obter o DeviceType ID a partir do nome (robusto em macOS)
               LINE=$(xcrun simctl list devicetypes | grep -F -i "$NAME (" | head -1)
               if [ -n "$LINE" ]; then
-                DTYPE_ID=$(echo "$LINE" | sed -n 's/.*(com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*).*/\1/p')
+                DTYPE_ID=$(echo "$LINE" | sed -nE 's/.*(com\.apple\.CoreSimulator\.SimDeviceType\.[^)]*).*/\1/p')
               else
                 DTYPE_ID=""
               fi
