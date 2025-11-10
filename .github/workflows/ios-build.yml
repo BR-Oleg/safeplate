@@ -73,7 +73,7 @@ jobs:
           echo "🔨 Compilando app iOS (xcodebuild Release, iphoneos)..."
           set -e
           set -o pipefail
-          xcodebuild \
+          PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
