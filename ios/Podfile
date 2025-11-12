@@ -56,6 +56,20 @@ post_install do |installer|
       config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386 x86_64'
       config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
       config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+
+      # Sanitizar flags inválidas que podem ter sido injetadas por pods (ex.: "-GCC_WARN_INHIBIT_ALL_WARNINGS")
+      %w[OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS].each do |key|
+        flags = config.build_settings[key]
+        if flags.nil?
+          next
+        elsif flags.is_a?(String)
+          list = flags.split(' ')
+        else
+          list = Array(flags).map(&:to_s)
+        end
+        list = list.reject { |f| f.strip == '-GCC_WARN_INHIBIT_ALL_WARNINGS' || f.strip == 'GCC_WARN_INHIBIT_ALL_WARNINGS' || f.strip.start_with?('-GCC_WARN_INHIBIT_ALL_WARNINGS') }
+        config.build_settings[key] = list
+      end
     end
   end
 end
