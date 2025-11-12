@@ -14,7 +14,7 @@ jobs:
   test-ios-simulator:
     name: Test iOS Simulator
     runs-on: macos-14
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -27,14 +27,22 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}-xcode15_4
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
       - name: Install CocoaPods
         run: |
           sudo gem install cocoapods
           pod --version
 
-      - name: Clean CocoaPods Cache (Added for stability)
-        run: |
-          pod cache clean --all || true
 
       - name: Clean Flutter (resolve Android embedding V2)
         run: flutter clean || true
@@ -77,6 +85,14 @@ jobs:
           xcrun simctl list runtimes
           echo "🧩 Tipos de dispositivo:"
           xcrun simctl list devicetypes
+
+      - name: Cache DerivedData (simulator)
+        uses: actions/cache@v4
+        with:
+          path: build/ios/Build
+          key: ${{ runner.os }}-derived-sim-${{ hashFiles('ios/Podfile.lock') }}-xcode15_4
+          restore-keys: |
+            ${{ runner.os }}-derived-sim-
 
       - name: Create and Boot iPhone Simulator (available runtime)
         run: |
@@ -151,13 +167,14 @@ jobs:
           # Compilar com Xcode diretamente (Debug para simulador)
           set -e
           set -o pipefail
-          PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild \
+          PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild -jobs 8 \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
             -configuration Debug \
             -sdk iphonesimulator \
             -destination "id=${DEVICE_UDID}" \
             -derivedDataPath build/ios \
+            COMPILER_INDEX_STORE_ENABLE=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 EXCLUDED_ARCHS='i386 x86_64' "EXCLUDED_ARCHS[sdk=iphonesimulator*]"='i386 x86_64' SWIFT_COMPILATION_MODE=wholemodule \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
           
           # Caminho do app gerado pelo Xcode para simulador (Debug)
