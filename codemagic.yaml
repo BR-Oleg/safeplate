@@ -1,0 +1,107 @@
+workflows:
+  ios_simulator_screens:
+    name: iOS Simulator - Build + Screens
+    max_build_duration: 60
+    environment:
+      flutter: "3.19.0"
+      xcode: "15.4"
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - ~/.cocoapods
+        - ios/Pods
+        - $HOME/.pub-cache
+        - build/ios/Build
+    scripts:
+      - name: Flutter pub get
+        script: |
+          flutter --version
+          flutter pub get || true
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod --version
+          pod install
+      - name: Create & boot simulator
+        script: |
+          echo "🔍 Selecting available iOS runtime..."
+          RUNTIMES=$(xcrun simctl list runtimes | grep -E '^iOS [0-9]+' | grep -v unavailable | sed -nE 's/.*(com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+).*/\1/p' | tail -r)
+          if [ -z "$RUNTIMES" ]; then
+            echo "No available iOS simulators found"
+            exit 1
+          fi
+          DEVICE_NAMES=("iPhone 15" "iPhone 14" "iPhone 15 Pro" "iPhone SE (3rd generation)")
+          CREATED=""
+          for RUNTIME_ID in $RUNTIMES; do
+            for NAME in "${DEVICE_NAMES[@]}"; do
+              LINE=$(xcrun simctl list devicetypes | grep -F -i "$NAME (" | head -1)
+              if [ -n "$LINE" ]; then
+                DTYPE_ID=$(echo "$LINE" | tr '()' '\n' | grep -E 'com\.apple\.CoreSimulator\.SimDeviceType\.' | head -1)
+              else
+                DTYPE_ID=""
+              fi
+              [ -z "$DTYPE_ID" ] && continue
+              if DEVICE_UDID=$(xcrun simctl create "CM iPhone" "$DTYPE_ID" "$RUNTIME_ID" 2>/dev/null); then
+                CREATED=1
+                DEVICE_NAME="$NAME"
+                SELECTED_RUNTIME="$RUNTIME_ID"
+                break 2
+              fi
+            done
+          done
+          if [ -z "$CREATED" ]; then
+            echo "Failed to create simulator"
+            exit 1
+          fi
+          xcrun simctl boot "$DEVICE_UDID" || true
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+          echo "export DEVICE_UDID=$DEVICE_UDID" >> $CM_ENV
+          echo "export DEVICE_NAME=$DEVICE_NAME" >> $CM_ENV
+          echo "export SELECTED_RUNTIME=$SELECTED_RUNTIME" >> $CM_ENV
+      - name: Build iOS (Debug, simulator)
+        script: |
+          set -e
+          set -o pipefail
+          PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild -jobs 8 \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=${DEVICE_UDID}" \
+            -derivedDataPath build/ios \
+            COMPILER_INDEX_STORE_ENABLE=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 "EXCLUDED_ARCHS[sdk=iphonesimulator*]"="i386 x86_64" SWIFT_COMPILATION_MODE=wholemodule \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
+          SIMULATOR_APP_PATH="build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
+          if [ ! -d "$SIMULATOR_APP_PATH" ]; then
+            echo "App not built at $SIMULATOR_APP_PATH"
+            exit 1
+          fi
+      - name: Install and launch
+        script: |
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          SIMULATOR_APP_PATH="build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print:CFBundleIdentifier' "$SIMULATOR_APP_PATH/Info.plist" 2>/dev/null || echo "com.safeplate.safeplate")
+          xcrun simctl install "$DEVICE_ID" "$SIMULATOR_APP_PATH" || xcrun simctl install booted "$SIMULATOR_APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" || true
+      - name: Capture media
+        script: |
+          set -e
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          mkdir -p cm-artifacts
+          xcrun simctl io "$DEVICE_ID" screenshot cm-artifacts/screenshot.png || true
+          xcrun simctl io "$DEVICE_ID" screenshot cm-artifacts/screenshot2.png || true
+          xcrun simctl io "$DEVICE_ID" recordVideo --type=mp4 cm-artifacts/demo.mp4 & VID=$!
+          sleep 12
+          kill -INT $VID || true
+          wait $VID || true
+      - name: Package Runner.app
+        script: |
+          tar -czf cm-artifacts/Runner.app.tgz -C build/ios/Build/Products/Debug-iphonesimulator Runner.app
+      - name: Cleanup simulator
+        script: |
+          xcrun simctl shutdown "$DEVICE_UDID" || true
+          xcrun simctl delete "$DEVICE_UDID" || true
+    artifacts:
+      - cm-artifacts/**
+      - xcodebuild.log
