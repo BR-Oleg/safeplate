@@ -63,15 +63,15 @@ workflows:
           fi
           xcrun simctl boot "$DEVICE_UDID" || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
-          echo "export DEVICE_UDID=$DEVICE_UDID" >> $CM_ENV
-          echo "export DEVICE_NAME=$DEVICE_NAME" >> $CM_ENV
-          echo "export SELECTED_RUNTIME=$SELECTED_RUNTIME" >> $CM_ENV
+          echo "export DEVICE_UDID=\"$DEVICE_UDID\"" >> $CM_ENV
+          echo "export DEVICE_NAME=\"$DEVICE_NAME\"" >> $CM_ENV
+          echo "export SELECTED_RUNTIME=\"$SELECTED_RUNTIME\"" >> $CM_ENV
           # Derivar OS_VERSION (ex.: com.apple.CoreSimulator.SimRuntime.iOS-18-1 -> 18.1)
           OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
           if [ -z "$OS_VERSION" ]; then
             OS_VERSION=$(xcrun simctl list runtimes | grep -E '^iOS [0-9]+' | grep -v unavailable | sed -nE 's/^iOS ([0-9]+\.[0-9]+).*/\1/p' | tail -1)
           fi
-          echo "export OS_VERSION=$OS_VERSION" >> $CM_ENV
+          echo "export OS_VERSION=\"$OS_VERSION\"" >> $CM_ENV
       - name: Build iOS (Debug, simulator)
         script: |
           set -e
