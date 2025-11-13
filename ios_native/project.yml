@@ -3,6 +3,14 @@ options:
   deploymentTarget:
     iOS: "14.0"
 
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 10.24.0
+  MapboxMaps:
+    url: https://github.com/mapbox/mapbox-maps-ios
+    from: 11.8.0
+
 targets:
   SafePlateNative:
     type: application
@@ -13,9 +21,30 @@ targets:
       - path: Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.safeplate.safeplatenative
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeplate.safeplate
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGNING_ALLOWED: NO
+    dependencies:
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseStorage
+      - package: MapboxMaps
+        product: MapboxMaps
+  SafePlateNativeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/SafePlateNativeUITests
+    settings:
+      base:
+        TEST_TARGET_NAME: SafePlateNative
+    dependencies:
+      - target: SafePlateNative
 
 schemes:
   SafePlateNative:
@@ -24,3 +53,7 @@ schemes:
         SafePlateNative: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - name: SafePlateNativeUITests

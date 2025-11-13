@@ -2,9 +2,12 @@ import SwiftUI
 
 @main
 struct SafePlateNativeApp: App {
+    @StateObject private var appState = AppState()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootRouterView()
+                .environmentObject(appState)
         }
     }
 }
