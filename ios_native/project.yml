@@ -4,9 +4,6 @@ options:
     iOS: "14.0"
 
 packages:
-  Firebase:
-    url: https://github.com/firebase/firebase-ios-sdk
-    from: 10.29.0
   MapboxMaps:
     url: https://github.com/mapbox/mapbox-maps-ios
     from: 11.8.0
@@ -25,14 +22,6 @@ targets:
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGNING_ALLOWED: NO
     dependencies:
-      - package: Firebase
-        product: FirebaseCore
-      - package: Firebase
-        product: FirebaseAuth
-      - package: Firebase
-        product: FirebaseFirestore
-      - package: Firebase
-        product: FirebaseStorage
       - package: MapboxMaps
         product: MapboxMaps
   SafePlateNativeUITests:
