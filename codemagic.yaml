@@ -145,3 +145,113 @@ workflows:
     artifacts:
       - cm-artifacts/**
       - xcodebuild.log
+  ios_native_simulator:
+    name: iOS Native - Build + Screens
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/Homebrew
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Generate Xcode project
+        script: |
+          cd ios_native
+          xcodegen generate
+      - name: Xcode diagnostics
+        script: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcodebuild -list -project ios_native/SafePlateNative.xcodeproj || true
+      - name: Create & boot simulator
+        script: |
+          echo "🔍 Selecting available iOS runtime..."
+          RUNTIMES=$(xcrun simctl list runtimes | grep -E '^iOS [0-9]+' | grep -v unavailable | sed -nE 's/.*(com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+).*/\1/p' | tail -r)
+          if [ -z "$RUNTIMES" ]; then
+            echo "No available iOS simulators found"
+            exit 1
+          fi
+          DEVICE_NAMES=("iPhone 15" "iPhone 14" "iPhone 15 Pro" "iPhone SE (3rd generation)")
+          CREATED=""
+          for RUNTIME_ID in $RUNTIMES; do
+            for NAME in "${DEVICE_NAMES[@]}"; do
+              LINE=$(xcrun simctl list devicetypes | grep -F -i "$NAME (" | head -1)
+              if [ -n "$LINE" ]; then
+                DTYPE_ID=$(echo "$LINE" | tr '()' '\n' | grep -E 'com\.apple\.CoreSimulator\.SimDeviceType\.' | head -1)
+              else
+                DTYPE_ID=""
+              fi
+              [ -z "$DTYPE_ID" ] && continue
+              if DEVICE_UDID=$(xcrun simctl create "CM iPhone" "$DTYPE_ID" "$RUNTIME_ID" 2>/dev/null); then
+                CREATED=1
+                DEVICE_NAME="$NAME"
+                SELECTED_RUNTIME="$RUNTIME_ID"
+                break 2
+              fi
+            done
+          done
+          if [ -z "$CREATED" ]; then
+            echo "Failed to create simulator"
+            exit 1
+          fi
+          xcrun simctl boot "$DEVICE_UDID" || true
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+          echo "export DEVICE_UDID=\"$DEVICE_UDID\"" >> $CM_ENV
+          echo "export DEVICE_NAME=\"$DEVICE_NAME\"" >> $CM_ENV
+          echo "export SELECTED_RUNTIME=\"$SELECTED_RUNTIME\"" >> $CM_ENV
+          OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
+          if [ -z "$OS_VERSION" ]; then
+            OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
+          fi
+          echo "export OS_VERSION=\"$OS_VERSION\"" >> $CM_ENV
+      - name: Build iOS Native (Debug, simulator)
+        script: |
+          cd ios_native
+          source $CM_ENV || true
+          echo "DEVICE_UDID=$DEVICE_UDID"
+          echo "DEVICE_NAME=$DEVICE_NAME"
+          echo "OS_VERSION=$OS_VERSION"
+          set -e
+          if [ -n "$DEVICE_UDID" ]; then
+            echo "📱 Building for simulator UDID: $DEVICE_UDID"
+            xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_UDID" -derivedDataPath build clean build | tee xcodebuild_native.log
+          elif [ -n "$DEVICE_NAME" ] && [ -n "$OS_VERSION" ]; then
+            echo "📱 Building for simulator: $DEVICE_NAME, iOS $OS_VERSION"
+            xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=$DEVICE_NAME,OS=$OS_VERSION" -derivedDataPath build clean build | tee xcodebuild_native.log
+          else
+            echo "📱 Building for generic iOS Simulator"
+            xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build clean build | tee xcodebuild_native.log
+          fi
+          SIMULATOR_APP_PATH="build/Build/Products/Debug-iphonesimulator/SafePlateNative.app"
+          if [ ! -d "$SIMULATOR_APP_PATH" ]; then
+            echo "App not built at $SIMULATOR_APP_PATH"
+            exit 1
+          fi
+      - name: Install and launch
+        script: |
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          APP_PATH="ios_native/build/Build/Products/Debug-iphonesimulator/SafePlateNative.app"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print:CFBundleIdentifier' "$APP_PATH/Info.plist" 2>/dev/null || echo "com.safeplate.safeplatenative")
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH" || xcrun simctl install booted "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" || true
+      - name: Capture media
+        script: |
+          set -e
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          mkdir -p cm-artifacts-native
+          xcrun simctl io "$DEVICE_ID" screenshot cm-artifacts-native/native-screenshot.png || true
+          xcrun simctl io "$DEVICE_ID" recordVideo --type=mp4 cm-artifacts-native/native-demo.mp4 & VID=$!
+          sleep 8
+          kill -INT $VID || true
+          wait $VID || true
+      - name: Cleanup simulator
+        script: |
+          xcrun simctl shutdown "$DEVICE_UDID" || true
+          xcrun simctl delete "$DEVICE_UDID" || true
+    artifacts:
+      - cm-artifacts-native/**
+      - ios_native/xcodebuild_native.log

@@ -1,0 +1,26 @@
+name: SafePlateNative
+options:
+  deploymentTarget:
+    iOS: "14.0"
+
+targets:
+  SafePlateNative:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/SafePlateNative
+    resources:
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.safeplate.safeplatenative
+        INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGNING_ALLOWED: NO
+
+schemes:
+  SafePlateNative:
+    build:
+      targets:
+        SafePlateNative: all
+    run:
+      config: Debug
