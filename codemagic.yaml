@@ -99,13 +99,13 @@ workflows:
           set -e
           if [ -n "$DEVICE_UDID" ]; then
             echo "📱 Building for simulator UDID: $DEVICE_UDID"
-            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_UDID" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_UDID" -derivedDataPath build clean build | tee xcodebuild.log
           elif [ -n "$DEVICE_NAME" ] && [ -n "$OS_VERSION" ]; then
             echo "📱 Building for simulator: $DEVICE_NAME, iOS $OS_VERSION"
-            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=$DEVICE_NAME,OS=$OS_VERSION" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=$DEVICE_NAME,OS=$OS_VERSION" -derivedDataPath build clean build | tee xcodebuild.log
           else
             echo "📱 Building for generic iOS Simulator"
-            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build clean build | tee xcodebuild.log
           fi
           echo "🧹 Post-build: cleaning any .resp files that may have been recreated"
           find build -name '*.resp' -type f 2>/dev/null -exec grep -l -- "-GCC_WARN_INHIBIT_ALL_WARNINGS" {} \; | while read -r f; do
