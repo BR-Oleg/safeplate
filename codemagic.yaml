@@ -24,6 +24,23 @@ workflows:
           cd ios
           pod --version
           pod install --clean-install --repo-update
+      - name: Verify Pods flags
+        script: |
+          cd ios
+          if grep -R -- "-GCC_WARN_INHIBIT_ALL_WARNINGS" Pods -n; then
+            echo "Invalid '-GCC_WARN_INHIBIT_ALL_WARNINGS' flag found in Pods. Failing early."
+            exit 1
+          fi
+      - name: Clean response files
+        script: |
+          cd ios
+          echo "🧹 Cleaning .resp files to strip '-GCC_WARN_INHIBIT_ALL_WARNINGS'"
+          find build -name '*.resp' -type f 2>/dev/null | while read -r f; do
+            if grep -q -- "-GCC_WARN_INHIBIT_ALL_WARNINGS" "$f"; then
+              echo "Cleaning $f"
+              sed -i '' 's/-GCC_WARN_INHIBIT_ALL_WARNINGS//g' "$f"
+            fi
+          done || true
       - name: Xcode diagnostics
         script: |
           xcodebuild -version
@@ -69,38 +86,32 @@ workflows:
           # Derivar OS_VERSION (ex.: com.apple.CoreSimulator.SimRuntime.iOS-18-1 -> 18.1)
           OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
           if [ -z "$OS_VERSION" ]; then
-            OS_VERSION=$(xcrun simctl list runtimes | grep -E '^iOS [0-9]+' | grep -v unavailable | sed -nE 's/^iOS ([0-9]+\.[0-9]+).*/\1/p' | tail -1)
+            OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
           fi
           echo "export OS_VERSION=\"$OS_VERSION\"" >> $CM_ENV
       - name: Build iOS (Debug, simulator)
         script: |
+          cd ios
+          source $CM_ENV || true
+          echo "DEVICE_UDID=$DEVICE_UDID"
+          echo "DEVICE_NAME=$DEVICE_NAME"
+          echo "OS_VERSION=$OS_VERSION"
           set -e
-          set -o pipefail
-          source "$CM_ENV" || true
-          echo "Using DEVICE_UDID=$DEVICE_UDID DEVICE_NAME=$DEVICE_NAME OS_VERSION=$OS_VERSION"
-          if [ -z "$DEVICE_UDID" ]; then
-            DEVICE_UDID=$(xcrun simctl list devices | grep -E '\\(Booted\\)' | head -1 | sed -E 's/.*\\(([A-F0-9-]+)\\).*/\\1/')
-            echo "Fallback DEVICE_UDID=$DEVICE_UDID"
+          if [ -n "$DEVICE_UDID" ]; then
+            echo "📱 Building for simulator UDID: $DEVICE_UDID"
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_UDID" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
+          elif [ -n "$DEVICE_NAME" ] && [ -n "$OS_VERSION" ]; then
+            echo "📱 Building for simulator: $DEVICE_NAME, iOS $OS_VERSION"
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "platform=iOS Simulator,name=$DEVICE_NAME,OS=$OS_VERSION" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
+          else
+            echo "📱 Building for generic iOS Simulator"
+            xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -arch arm64 -derivedDataPath build clean build | tee xcodebuild.log
           fi
-          set +e
-          # 1) Preferir UDID (dispositivo criado e bootado)
-          PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild -jobs 8 -workspace ios/Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "id=${DEVICE_UDID}" -destination-timeout 120 -derivedDataPath build/ios COMPILER_INDEX_STORE_ENABLE=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 EXCLUDED_ARCHS="i386 x86_64" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
-          STATUS=$?
-          if [ $STATUS -ne 0 ]; then
-            # 2) Fallback por nome/OS
-            DEST_MAIN="platform=iOS Simulator,OS=${OS_VERSION:-latest},name=${DEVICE_NAME:-iPhone 15}"
-            PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild -jobs 8 -workspace ios/Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "$DEST_MAIN" -destination-timeout 120 -derivedDataPath build/ios COMPILER_INDEX_STORE_ENABLE=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 EXCLUDED_ARCHS="i386 x86_64" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
-            STATUS=$?
-          fi
-          if [ $STATUS -ne 0 ]; then
-            # 3) Fallback genérico
-            PODS_ROOT="$PWD/ios/Pods" PODS_PODFILE_DIR_PATH="$PWD/ios" xcodebuild -jobs 8 -workspace ios/Runner.xcworkspace -scheme Runner -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -destination-timeout 120 -derivedDataPath build/ios COMPILER_INDEX_STORE_ENABLE=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 EXCLUDED_ARCHS="i386 x86_64" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee xcodebuild.log
-            STATUS=$?
-          fi
-          set -e
-          if [ $STATUS -ne 0 ]; then
-            exit $STATUS
-          fi
+          echo "🧹 Post-build: cleaning any .resp files that may have been recreated"
+          find build -name '*.resp' -type f 2>/dev/null -exec grep -l -- "-GCC_WARN_INHIBIT_ALL_WARNINGS" {} \; | while read -r f; do
+            echo "Re-cleaning $f"
+            sed -i '' 's/-GCC_WARN_INHIBIT_ALL_WARNINGS//g' "$f"
+          done || true
           SIMULATOR_APP_PATH="build/ios/Build/Products/Debug-iphonesimulator/Runner.app"
           if [ ! -d "$SIMULATOR_APP_PATH" ]; then
             echo "App not built at $SIMULATOR_APP_PATH"
