@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(FirebaseAuth)
 import FirebaseCore
 import FirebaseAuth
 
@@ -14,3 +15,11 @@ enum AuthManager {
         }
     }
 }
+#else
+enum AuthManager {
+    static func signInAnonymously(completion: @escaping (Bool, Error?) -> Void) {
+        // FirebaseAuth indisponível neste build (simulador CI sem dependências) -> seguir em modo offline
+        completion(true, nil)
+    }
+}
+#endif

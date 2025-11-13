@@ -220,7 +220,7 @@ workflows:
           xcrun simctl io "$DEVICE_ID" screenshot ../cm-artifacts-native/native-screenshot.png || true
           set -e
           set -o pipefail
-          xcrun simctl io "$DEVICE_ID" recordVideo --type=mp4 ../cm-artifacts-native/uitest-demo.mp4 & VID=$!
+          xcrun simctl io "$DEVICE_ID" recordVideo --codec=h264 ../cm-artifacts-native/uitest-demo.mov & VID=$!
           xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_ID" -derivedDataPath build test | tee xcodebuild_native_test.log
           TEST_STATUS=${PIPESTATUS[0]}
           kill -INT $VID || true

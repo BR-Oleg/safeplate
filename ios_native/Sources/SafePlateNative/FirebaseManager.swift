@@ -1,4 +1,5 @@
 import Foundation
+#if canImport(FirebaseCore)
 import FirebaseCore
 
 enum FirebaseManager {
@@ -14,3 +15,8 @@ enum FirebaseManager {
         FirebaseApp.configure(options: options)
     }
 }
+#else
+enum FirebaseManager {
+    static func configure() { /* no-op */ }
+}
+#endif
