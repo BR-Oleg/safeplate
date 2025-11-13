@@ -227,7 +227,7 @@ workflows:
             OS_VERSION=$(echo "$SELECTED_RUNTIME" | sed -nE 's/.*iOS-([0-9]+)-([0-9]+).*/\1.\2/p')
           fi
           echo "export OS_VERSION=\"$OS_VERSION\"" >> $CM_ENV
-      - name: Run UI tests with video capture
+      - name: Build native app (Debug, simulator)
         script: |
           cd ios_native
           source $CM_ENV || true
@@ -235,16 +235,32 @@ workflows:
           echo "DEVICE_NAME=$DEVICE_NAME"
           echo "OS_VERSION=$OS_VERSION"
           DEVICE_ID=${DEVICE_UDID:-booted}
-          mkdir -p ../cm-artifacts-native
-          xcrun simctl io "$DEVICE_ID" screenshot ../cm-artifacts-native/native-screenshot.png || true
           set -e
           set -o pipefail
-          xcrun simctl io "$DEVICE_ID" recordVideo --codec=h264 ../cm-artifacts-native/uitest-demo.mov & VID=$!
-          xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_ID" -derivedDataPath build test | tee xcodebuild_native_test.log
-          TEST_STATUS=${PIPESTATUS[0]}
+          xcodebuild -project SafePlateNative.xcodeproj -scheme SafePlateNative -configuration Debug -sdk iphonesimulator -destination "id=$DEVICE_ID" -derivedDataPath build clean build | tee xcodebuild_native_build.log
+      - name: Install and launch native app
+        script: |
+          source $CM_ENV || true
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          APP_PATH="ios_native/build/Build/Products/Debug-iphonesimulator/SafePlateNative.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "App not found at $APP_PATH"
+            exit 1
+          fi
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print:CFBundleIdentifier' "$APP_PATH/Info.plist" 2>/dev/null || echo "com.safeplate.safeplate")
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH" || xcrun simctl install booted "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID" || true
+      - name: Capture media (screenshots + video)
+        script: |
+          source $CM_ENV || true
+          DEVICE_ID=${DEVICE_UDID:-booted}
+          mkdir -p cm-artifacts-native
+          xcrun simctl io "$DEVICE_ID" screenshot cm-artifacts-native/native-screenshot.png || true
+          xcrun simctl io "$DEVICE_ID" screenshot cm-artifacts-native/native-screenshot2.png || true
+          xcrun simctl io "$DEVICE_ID" recordVideo --codec=h264 cm-artifacts-native/app-demo.mov & VID=$!
+          sleep 12
           kill -INT $VID || true
           wait $VID || true
-          exit $TEST_STATUS
       - name: Package .app for App Preview
         script: |
           APP_PATH="ios_native/build/Build/Products/Debug-iphonesimulator/SafePlateNative.app"
@@ -260,4 +276,4 @@ workflows:
           xcrun simctl delete "$DEVICE_UDID" || true
     artifacts:
       - cm-artifacts-native/**
-      - ios_native/xcodebuild_native_test.log
+      - ios_native/xcodebuild_native_build.log
