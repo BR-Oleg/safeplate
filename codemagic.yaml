@@ -15,6 +15,25 @@ workflows:
         - $HOME/.pub-cache
         - build/ios/Build
     scripts:
+      - name: Place GoogleService-Info.plist
+        script: |
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "Found GoogleService-Info.plist at repo root. Copying to ios_native/Resources";
+            cp GoogleService-Info.plist ios_native/Resources/GoogleService-Info.plist;
+            # Align BUNDLE_ID with the app's bundle identifier
+            /usr/libexec/PlistBuddy -c 'Set :BUNDLE_ID com.safeplate.safeplate' ios_native/Resources/GoogleService-Info.plist || true
+            # Inject URL Types (REVERSED_CLIENT_ID) into Info.plist for Google Sign-In
+            RCI=$(/usr/libexec/PlistBuddy -c 'Print :REVERSED_CLIENT_ID' ios_native/Resources/GoogleService-Info.plist 2>/dev/null || echo '')
+            if [ -n "$RCI" ]; then
+              IP=ios_native/Resources/Info.plist
+              /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes array' "$IP" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0 dict' "$IP" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' "$IP" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $RCI" "$IP" 2>/dev/null || true
+            fi
+          else
+            echo "GoogleService-Info.plist not found at repo root. Continuing without it.";
+          fi
       - name: Flutter pub get
         script: |
           flutter --version
@@ -226,6 +245,15 @@ workflows:
           kill -INT $VID || true
           wait $VID || true
           exit $TEST_STATUS
+      - name: Package .app for App Preview
+        script: |
+          APP_PATH="ios_native/build/Build/Products/Debug-iphonesimulator/SafePlateNative.app"
+          if [ -d "$APP_PATH" ]; then
+            mkdir -p cm-artifacts-native
+            tar -czf cm-artifacts-native/SafePlateNative.app.tgz -C "$(dirname "$APP_PATH")" "$(basename "$APP_PATH")"
+          else
+            echo "App path not found for packaging: $APP_PATH";
+          fi
       - name: Cleanup simulator
         script: |
           xcrun simctl shutdown "$DEVICE_UDID" || true

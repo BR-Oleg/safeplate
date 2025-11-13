@@ -20,7 +20,7 @@ struct LoginView: View {
 
             Button(action: signIn) {
                 HStack {
-                    if isLoading { ProgressView().tint(.white) }
+                    if isLoading { ProgressView() }
                     Text(isLoading ? "Entrando..." : "Entrar")
                 }
                 .frame(maxWidth: .infinity)
