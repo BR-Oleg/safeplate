@@ -282,4 +282,5 @@ workflows:
           xcrun simctl delete "$DEVICE_UDID" || true
     artifacts:
       - cm-artifacts-native/**
+      - ios_native/build/Build/Products/Debug-iphonesimulator/SafePlateNative.app
       - ios_native/xcodebuild_native_build.log
