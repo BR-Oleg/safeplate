@@ -1,6 +1,8 @@
 import SwiftUI
-import MapboxMaps
 import CoreLocation
+
+#if canImport(MapboxMaps) && USE_MAPBOX
+import MapboxMaps
 
 struct MapboxMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MapView {
@@ -13,3 +15,14 @@ struct MapboxMapView: UIViewRepresentable {
 
     func updateUIView(_ uiView: MapView, context: Context) {}
 }
+#else
+struct MapboxMapView: View {
+    var body: some View {
+        ZStack {
+            Color.gray.opacity(0.2)
+            Text("Map unavailable")
+                .foregroundColor(.secondary)
+        }
+    }
+}
+#endif

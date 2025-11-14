@@ -2,7 +2,7 @@ name: SafePlateNative
 options:
   deploymentTarget:
     iOS: "14.0"
-
+ 
 packages:
   MapboxMaps:
     url: https://github.com/mapbox/mapbox-maps-ios
@@ -21,6 +21,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.safeplate.safeplate
         INFOPLIST_FILE: Resources/Info.plist
         CODE_SIGNING_ALLOWED: NO
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) USE_MAPBOX"
     dependencies:
       - package: MapboxMaps
         product: MapboxMaps
