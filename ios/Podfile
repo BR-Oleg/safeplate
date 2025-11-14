@@ -37,6 +37,14 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    if target.name == 'BoringSSL-GRPC'
+      target.source_build_phase.files.each do |file|
+        next unless file.settings && file.settings['COMPILER_FLAGS']
+        flags = file.settings['COMPILER_FLAGS'].split(/\s+/)
+        flags = flags.reject { |f| f.include?('GCC_WARN_INHIBIT_ALL_WARNINGS') }
+        file.settings['COMPILER_FLAGS'] = flags.join(' ')
+      end
+    end
     target.build_configurations.each do |config|
       # Configuração mínima do iOS
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
