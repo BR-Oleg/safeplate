@@ -333,7 +333,7 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: establishment.difficultyLevel.color.withValues(alpha: 0.2),
+                        color: establishment.difficultyLevel.color.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(

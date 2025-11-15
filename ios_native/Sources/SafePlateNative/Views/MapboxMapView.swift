@@ -24,7 +24,7 @@ struct MapboxMapView: View {
                 zoom: 12
             )
         ) {
-            ForEach(establishments) { establishment in
+            ForEvery(establishments) { establishment in
                 MapViewAnnotation(coordinate: establishment.coordinate) {
                     VStack(spacing: 4) {
                         ZStack {
