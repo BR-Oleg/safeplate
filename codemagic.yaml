@@ -174,6 +174,15 @@ workflows:
       cache_paths:
         - $HOME/Library/Caches/Homebrew
     scripts:
+      - name: Place GoogleService-Info.plist for native app
+        script: |
+          if [ -f "GoogleService-Info.plist" ]; then
+            echo "Found GoogleService-Info.plist at repo root. Copying to ios_native/Resources";
+            cp GoogleService-Info.plist ios_native/Resources/GoogleService-Info.plist;
+            /usr/libexec/PlistBuddy -c 'Set :BUNDLE_ID com.safeplate.safeplate' ios_native/Resources/GoogleService-Info.plist || true
+          else
+            echo "GoogleService-Info.plist not found at repo root. Native app will run without Firebase.";
+          fi
       - name: Install XcodeGen
         script: |
           brew list xcodegen >/dev/null 2>&1 || brew install xcodegen

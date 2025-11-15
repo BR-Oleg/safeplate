@@ -6,6 +6,13 @@ import FirebaseAuth
 enum AuthManager {
     static func signInAnonymously(completion: @escaping (Bool, Error?) -> Void) {
         FirebaseManager.configure()
+        // If Firebase is not configured (e.g. missing GoogleService-Info.plist),
+        // behave like offline mode to avoid runtime crashes on Auth.auth().
+        guard FirebaseApp.app() != nil else {
+            completion(true, nil)
+            return
+        }
+
         Auth.auth().signInAnonymously { authResult, error in
             if let error = error {
                 completion(false, error)

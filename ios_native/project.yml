@@ -7,6 +7,9 @@ packages:
   MapboxMaps:
     url: https://github.com/mapbox/mapbox-maps-ios
     from: 11.8.0
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 10.0.0
 
 targets:
   SafePlateNative:
@@ -25,6 +28,10 @@ targets:
     dependencies:
       - package: MapboxMaps
         product: MapboxMaps
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseAuth
   SafePlateNativeUITests:
     type: bundle.ui-testing
     platform: iOS
