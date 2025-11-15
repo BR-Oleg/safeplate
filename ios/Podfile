@@ -45,6 +45,22 @@ post_install do |installer|
         file.settings['COMPILER_FLAGS'] = flags.join(' ')
       end
     end
+    if target.name == 'gRPC-Core'
+      begin
+        path = 'Pods/gRPC-Core/src/core/lib/promise/detail/basic_seq.h'
+        if File.exist?(path)
+          contents = File.read(path)
+          patched = contents.gsub('Traits::template CallSeqFactory(f_, *cur_, std::move(arg))',
+                                  'Traits::CallSeqFactory(f_, *cur_, std::move(arg))')
+          patched = patched.gsub('Traits::template CallSeqFactory<>(f_, *cur_, std::move(arg))',
+                                 'Traits::CallSeqFactory<>(f_, *cur_, std::move(arg))')
+          if patched != contents
+            File.write(path, patched)
+          end
+        end
+      rescue
+      end
+    end
     target.build_configurations.each do |config|
       # Configuração mínima do iOS
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
