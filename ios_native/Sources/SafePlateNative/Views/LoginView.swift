@@ -31,6 +31,17 @@ struct LoginView: View {
             }
             .disabled(isLoading)
             .accessibilityIdentifier("loginButton")
+
+            Button(action: {
+                appState.login() // fallback para fluxo offline / testes
+            }) {
+                Text("Continuar offline")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.gray.opacity(0.15))
+                    .foregroundColor(.primary)
+                    .cornerRadius(8)
+            }
         }
         .padding()
         .onAppear { FirebaseManager.configure() }
@@ -45,8 +56,7 @@ struct LoginView: View {
                 if success {
                     appState.login()
                 } else {
-                    errorMessage = error?.localizedDescription ?? "Falha ao entrar (continuando offline)"
-                    appState.login() // fallback para fluxo offline / testes
+                    errorMessage = error?.localizedDescription ?? "Falha ao entrar"
                 }
             }
         }
