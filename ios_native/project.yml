@@ -29,8 +29,6 @@ targets:
       - package: MapboxMaps
         product: MapboxMaps
       - package: Firebase
-        product: FirebaseCore
-      - package: Firebase
         product: FirebaseAuth
   SafePlateNativeUITests:
     type: bundle.ui-testing
