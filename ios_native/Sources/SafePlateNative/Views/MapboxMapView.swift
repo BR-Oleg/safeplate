@@ -44,7 +44,7 @@ struct MapboxMapView: View {
                             .foregroundColor(.primary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(.ultraThinMaterial)
+                            .background(Color.white.opacity(0.9))
                             .cornerRadius(6)
                     }
                     .onTapGesture {
