@@ -50,6 +50,12 @@ struct SearchView: View {
                     .padding(.horizontal)
                 }
 
+                Text("\(filteredEstablishments.count) locais encontrados")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+
                 // Map + markers filling the rest
                 MapboxMapView(establishments: filteredEstablishments) { establishment in
                     // Placeholder: could show a bottom sheet with details
