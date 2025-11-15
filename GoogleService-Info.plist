@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>476899420653-i0qprhlbmj11tqi4cl2ehv98df6cscu3.apps.googleusercontent.com</string>
+	<string>476899420653-i68uga9ceqb8m9ovo1bpm9j7204ued3g.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.476899420653-i0qprhlbmj11tqi4cl2ehv98df6cscu3</string>
+	<string>com.googleusercontent.apps.476899420653-i68uga9ceqb8m9ovo1bpm9j7204ued3g</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>476899420653-j2614h6tqb6horgcnjc597lm9hlsfc2r.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>safeplate</string>
+	<string>com.safeplate.safeplate</string>
 	<key>PROJECT_ID</key>
 	<string>safeplate-a14e9</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:476899420653:ios:4c35226f23f3996103dfe4</string>
+	<string>1:476899420653:ios:3c8037d0a8fae5e103dfe4</string>
 </dict>
 </plist>

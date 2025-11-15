@@ -7,9 +7,14 @@ enum AuthManager {
     static func signInAnonymously(completion: @escaping (Bool, Error?) -> Void) {
         FirebaseManager.configure()
         // If Firebase is not configured (e.g. missing GoogleService-Info.plist),
-        // behave like offline mode to avoid runtime crashes on Auth.auth().
+        // signal an error so the UI can show that we are running offline.
         guard FirebaseApp.app() != nil else {
-            completion(true, nil)
+            let error = NSError(
+                domain: "AuthManager",
+                code: 0,
+                userInfo: [NSLocalizedDescriptionKey: "Firebase não configurado (FirebaseApp.app() == nil)"]
+            )
+            completion(false, error)
             return
         }
 
