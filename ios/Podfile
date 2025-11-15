@@ -45,10 +45,11 @@ post_install do |installer|
         file.settings['COMPILER_FLAGS'] = flags.join(' ')
       end
     end
-    if target.name == 'gRPC-Core'
+    if ['gRPC-Core', 'gRPC-C++'].include?(target.name)
       begin
-        path = 'Pods/gRPC-Core/src/core/lib/promise/detail/basic_seq.h'
-        if File.exist?(path)
+        ['Pods/gRPC-Core/src/core/lib/promise/detail/basic_seq.h',
+         'Pods/gRPC-C++/src/core/lib/promise/detail/basic_seq.h'].each do |path|
+          next unless File.exist?(path)
           contents = File.read(path)
           patched = contents.gsub('Traits::template CallSeqFactory(f_, *cur_, std::move(arg))',
                                   'Traits::CallSeqFactory(f_, *cur_, std::move(arg))')
