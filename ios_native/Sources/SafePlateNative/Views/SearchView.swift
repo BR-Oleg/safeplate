@@ -275,7 +275,7 @@ struct AdvancedFiltersSheet: View {
     let allCategories: [String]
     @Binding var selectedCategories: Set<String>
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
 
     var body: some View {
         NavigationView {
@@ -323,7 +323,7 @@ struct AdvancedFiltersSheet: View {
                     }
                     Spacer()
                     Button("Aplicar") {
-                        dismiss()
+                        presentationMode.wrappedValue.dismiss()
                     }
                     .font(.headline)
                 }
