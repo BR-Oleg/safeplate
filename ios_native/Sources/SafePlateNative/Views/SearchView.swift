@@ -177,10 +177,12 @@ struct SearchView: View {
                     selectedCategories: $selectedCategories
                 )
             }
-            .alert("Filtros Avançados", isPresented: $showingPremiumAlert) {
-                Button("Fechar", role: .cancel) {}
-            } message: {
-                Text("Os filtros avançados são exclusivos para usuários Premium no protótipo Flutter. Use a tela de Perfil/Premium para simular o upgrade.")
+            .alert(isPresented: $showingPremiumAlert) {
+                Alert(
+                    title: Text("Filtros Avançados"),
+                    message: Text("Os filtros avançados são exclusivos para usuários Premium no protótipo Flutter. Use a tela de Perfil/Premium para simular o upgrade."),
+                    dismissButton: .default(Text("Fechar"))
+                )
             }
         }
     }
@@ -377,11 +379,12 @@ struct FlexibleView<Data: Collection, Content: View>: View where Data.Element: H
 
     var body: some View {
         GeometryReader { geometry in
+            let elements = Array(data)
             var width: CGFloat = 0
             var height: CGFloat = 0
 
             ZStack(alignment: Alignment(horizontal: alignment, vertical: .top)) {
-                ForEach(Array(data), id: \.self) { element in
+                ForEach(elements, id: \.self) { element in
                     content(element)
                         .padding(.all, 4)
                         .alignmentGuide(.leading) { d in
@@ -390,7 +393,7 @@ struct FlexibleView<Data: Collection, Content: View>: View where Data.Element: H
                                 height -= d.height + spacing
                             }
                             let result = width
-                            if let last = data.last, last == element {
+                            if let last = elements.last, last == element {
                                 width = 0
                             } else {
                                 width -= d.width + spacing
@@ -399,7 +402,7 @@ struct FlexibleView<Data: Collection, Content: View>: View where Data.Element: H
                         }
                         .alignmentGuide(.top) { _ in
                             let result = height
-                            if let last = data.last, last == element {
+                            if let last = elements.last, last == element {
                                 height = 0
                             }
                             return result
