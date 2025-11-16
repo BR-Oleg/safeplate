@@ -8,6 +8,7 @@ struct AppUser {
     let isPremium: Bool
     let premiumExpiresAt: Date?
     let preferredLanguageCode: String?
+    let userType: String?
 
     var isPremiumActive: Bool {
         if !isPremium { return false }

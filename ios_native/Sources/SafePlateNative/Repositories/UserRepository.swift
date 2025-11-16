@@ -9,6 +9,7 @@ protocol UserRepositoryProtocol {
     func fetchCurrentUser(completion: @escaping (Result<AppUser, Error>) -> Void)
     func updatePreferredLanguage(userId: String, languageCode: String, completion: @escaping (Error?) -> Void)
     func updatePremium(userId: String, isPremium: Bool, expiresAt: Date?, completion: @escaping (Error?) -> Void)
+    func updateUserType(userId: String, userType: String, completion: @escaping (Error?) -> Void)
 }
 
 enum UserRepositoryError: Error {
@@ -44,6 +45,7 @@ struct UserRepository: UserRepositoryProtocol {
                 let points = data["points"] as? Int ?? 0
                 let isPremium = data["isPremium"] as? Bool ?? false
                 let preferredLanguage = data["preferredLanguage"] as? String
+                let userType = data["type"] as? String
 
                 var premiumExpiresAt: Date?
                 if let raw = data["premiumExpiresAt"] {
@@ -61,7 +63,8 @@ struct UserRepository: UserRepositoryProtocol {
                     points: points,
                     isPremium: isPremium,
                     premiumExpiresAt: premiumExpiresAt,
-                    preferredLanguageCode: preferredLanguage
+                    preferredLanguageCode: preferredLanguage,
+                    userType: userType
                 )
                 completion(.success(user))
             } else {
@@ -91,7 +94,8 @@ struct UserRepository: UserRepositoryProtocol {
                             points: 0,
                             isPremium: false,
                             premiumExpiresAt: nil,
-                            preferredLanguageCode: AppState.Language.pt.rawValue
+                            preferredLanguageCode: AppState.Language.pt.rawValue,
+                            userType: "user"
                         )
                         completion(.success(user))
                     }
@@ -138,6 +142,24 @@ struct UserRepository: UserRepositoryProtocol {
             updates["premiumExpiresAt"] = FieldValue.delete()
         }
         db.collection("users").document(userId).updateData(updates) { error in
+            completion(error)
+        }
+        #else
+        completion(UserRepositoryError.firebaseUnavailable)
+        #endif
+    }
+
+    func updateUserType(userId: String, userType: String, completion: @escaping (Error?) -> Void) {
+        #if canImport(FirebaseAuth) && canImport(FirebaseFirestore) && canImport(FirebaseCore)
+        FirebaseManager.configure()
+        guard FirebaseApp.app() != nil else {
+            completion(UserRepositoryError.firebaseUnavailable)
+            return
+        }
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).updateData([
+            "type": userType
+        ]) { error in
             completion(error)
         }
         #else

@@ -19,6 +19,8 @@ enum FirebaseManager {
             options.apiKey = "AIzaSyD6BrhUmXeqFYiPnNbVbxkxvxwnyqNrzQ8"
             options.projectID = "safeplate-a14e9"
             options.storageBucket = "safeplate-a14e9.firebasestorage.app"
+            // Definir clientID explicitamente para o fluxo de Google Sign-In
+            options.clientID = "476899420653-i68uga9ceqb8m9ovo1bpm9j7204ued3g.apps.googleusercontent.com"
             FirebaseApp.configure(options: options)
         }
         #else

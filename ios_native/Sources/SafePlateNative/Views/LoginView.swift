@@ -8,6 +8,7 @@ struct LoginView: View {
     @State private var isSignUp: Bool = false
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var selectedUserType: String = "user" // "user" ou "business"
 
     private let userRepository: UserRepositoryProtocol = UserRepository()
 
@@ -18,6 +19,12 @@ struct LoginView: View {
                 .bold()
             Text(isSignUp ? "Crie sua conta" : "Entre para continuar")
                 .foregroundColor(.secondary)
+
+            // Seleção de tipo de usuário (Usuário x Empresa)
+            HStack(spacing: 12) {
+                userTypeButton(label: "Usuário", value: "user")
+                userTypeButton(label: "Empresa", value: "business")
+            }
 
             if let msg = errorMessage {
                 Text(msg)
@@ -151,6 +158,13 @@ struct LoginView: View {
                 isLoading = false
                 switch result {
                 case .success(let user):
+                    // Se o tipo salvo no backend for diferente da seleção atual, atualizar campo "type"
+                    let desiredType = selectedUserType
+                    if user.userType != desiredType {
+                        userRepository.updateUserType(userId: user.id, userType: desiredType) { _ in
+                            // Ignorar erro aqui para não bloquear login; será refletido em próximos loads
+                        }
+                    }
                     appState.applyUser(user)
                     appState.login()
                 case .failure(let fetchError):
@@ -163,5 +177,20 @@ struct LoginView: View {
     private func rootViewController() -> UIViewController? {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return nil }
         return scene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+    }
+
+    private func userTypeButton(label: String, value: String) -> some View {
+        let isSelected = selectedUserType == value
+        return Button(action: { selectedUserType = value }) {
+            Text(label)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .bold : .regular)
+                .foregroundColor(isSelected ? .white : .primary)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(isSelected ? Color.green : Color(.systemGray6))
+                .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
     }
 }
