@@ -46,6 +46,7 @@ struct UserRepository: UserRepositoryProtocol {
                 let isPremium = data["isPremium"] as? Bool ?? false
                 let preferredLanguage = data["preferredLanguage"] as? String
                 let userType = data["type"] as? String
+                let photoUrl = data["photoUrl"] as? String
 
                 var premiumExpiresAt: Date?
                 if let raw = data["premiumExpiresAt"] {
@@ -64,7 +65,8 @@ struct UserRepository: UserRepositoryProtocol {
                     isPremium: isPremium,
                     premiumExpiresAt: premiumExpiresAt,
                     preferredLanguageCode: preferredLanguage,
-                    userType: userType
+                    userType: userType,
+                    photoUrl: photoUrl
                 )
                 completion(.success(user))
             } else {
@@ -82,6 +84,9 @@ struct UserRepository: UserRepositoryProtocol {
                 if let name = name {
                     userData["name"] = name
                 }
+                if let photoURL = currentUser.photoURL?.absoluteString {
+                    userData["photoUrl"] = photoURL
+                }
 
                 docRef.setData(userData, merge: true) { error in
                     if let error = error {
@@ -95,7 +100,8 @@ struct UserRepository: UserRepositoryProtocol {
                             isPremium: false,
                             premiumExpiresAt: nil,
                             preferredLanguageCode: AppState.Language.pt.rawValue,
-                            userType: "user"
+                            userType: "user",
+                            photoUrl: currentUser.photoURL?.absoluteString
                         )
                         completion(.success(user))
                     }

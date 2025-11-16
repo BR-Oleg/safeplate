@@ -19,6 +19,7 @@ final class AppState: ObservableObject {
     @Published var isPremium: Bool = false
     @Published var points: Int = 0
     @Published var userId: String?
+    @Published var currentUser: AppUser?
 
     private let languageStorageKey = "app_language"
 
@@ -74,6 +75,7 @@ final class AppState: ObservableObject {
         userId = nil
         points = 0
         isPremium = false
+        currentUser = nil
     }
 
     private func loadLanguage() {
@@ -97,6 +99,7 @@ final class AppState: ObservableObject {
     }
 
     func applyUser(_ user: AppUser) {
+        currentUser = user
         userId = user.id
         setPoints(user.points)
         setPremium(user.isPremiumActive)

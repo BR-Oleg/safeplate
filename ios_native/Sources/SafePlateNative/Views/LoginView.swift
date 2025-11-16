@@ -221,7 +221,8 @@ struct LoginView: View {
             isPremium: false,
             premiumExpiresAt: nil,
             preferredLanguageCode: AppState.Language.pt.rawValue,
-            userType: selectedUserType
+            userType: selectedUserType,
+            photoUrl: nil
         )
     }
 }

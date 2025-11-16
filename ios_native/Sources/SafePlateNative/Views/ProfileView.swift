@@ -8,6 +8,12 @@ struct ProfileView: View {
     var body: some View {
         NavigationView {
             List {
+                if let user = appState.currentUser {
+                    Section {
+                        ProfileHeaderView(user: user)
+                    }
+                }
+
                 if appState.isPremium {
                     Section {
                         PremiumBannerRow()
@@ -104,6 +110,84 @@ struct PremiumBannerRow: View {
             Spacer()
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct ProfileHeaderView: View {
+    let user: AppUser
+
+    private var displayName: String {
+        if let name = user.name, !name.isEmpty {
+            return name
+        }
+        return user.email
+    }
+
+    private var userTypeLabel: String {
+        switch user.userType {
+        case "business":
+            return "Empresa"
+        default:
+            return "Usuário"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ProfileAvatarView(name: displayName, photoUrl: user.photoUrl)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Text(user.email)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    Text(userTypeLabel)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemGray6))
+                        .foregroundColor(.primary)
+                        .cornerRadius(999)
+
+                    if user.isPremiumActive {
+                        Text("Premium")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.yellow.opacity(0.15))
+                            .foregroundColor(.yellow)
+                            .cornerRadius(999)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct ProfileAvatarView: View {
+    let name: String
+    let photoUrl: String?
+
+    private var initials: String {
+        String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1)).uppercased()
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.green.opacity(0.15))
+            Text(initials)
+                .font(.headline)
+                .foregroundColor(.green)
+        }
+        .frame(width: 56, height: 56)
     }
 }
 
