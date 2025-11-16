@@ -7,25 +7,25 @@ struct HomeView: View {
         TabView {
             SearchView()
                 .tabItem {
-                    Label("Buscar", systemImage: "magnifyingglass")
+                    Label(appState.localized("tab_search"), systemImage: "magnifyingglass")
                 }
                 .accessibilityIdentifier("tabSearch")
 
             FavoritesView()
                 .tabItem {
-                    Label("Favoritos", systemImage: "heart")
+                    Label(appState.localized("tab_favorites"), systemImage: "heart")
                 }
                 .accessibilityIdentifier("tabFavorites")
 
             CouponsView()
                 .tabItem {
-                    Label("Cupons", systemImage: "tag")
+                    Label(appState.localized("tab_coupons"), systemImage: "tag")
                 }
                 .accessibilityIdentifier("tabCoupons")
 
             ProfileView()
                 .tabItem {
-                    Label("Perfil", systemImage: "person")
+                    Label(appState.localized("tab_profile"), systemImage: "person")
                 }
                 .accessibilityIdentifier("tabProfile")
         }

@@ -10,6 +10,9 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     from: 10.0.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 7.0.0
 
 targets:
   SafePlateNative:
@@ -30,6 +33,10 @@ targets:
         product: MapboxMaps
       - package: Firebase
         product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: GoogleSignIn
+        product: GoogleSignIn
   SafePlateNativeUITests:
     type: bundle.ui-testing
     platform: iOS
