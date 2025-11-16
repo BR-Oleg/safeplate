@@ -1,5 +1,8 @@
 import SwiftUI
 import UIKit
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
 
 struct LoginView: View {
     @EnvironmentObject var appState: AppState
@@ -168,7 +171,13 @@ struct LoginView: View {
                     appState.applyUser(user)
                     appState.login()
                 case .failure(let fetchError):
-                    errorMessage = fetchError.localizedDescription
+                    if let repoError = fetchError as? UserRepositoryError {
+                        let fallbackUser = makeFallbackUser()
+                        appState.applyUser(fallbackUser)
+                        appState.login()
+                    } else {
+                        errorMessage = fetchError.localizedDescription
+                    }
                 }
             }
         }
@@ -192,5 +201,27 @@ struct LoginView: View {
                 .cornerRadius(8)
         }
         .buttonStyle(.plain)
+    }
+
+    private func makeFallbackUser() -> AppUser {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        #if canImport(FirebaseAuth)
+        let current = Auth.auth().currentUser
+        let uid = current?.uid ?? UUID().uuidString
+        let resolvedEmail = current?.email ?? trimmedEmail
+        #else
+        let uid = UUID().uuidString
+        let resolvedEmail = trimmedEmail
+        #endif
+        return AppUser(
+            id: uid,
+            email: resolvedEmail,
+            name: nil,
+            points: 0,
+            isPremium: false,
+            premiumExpiresAt: nil,
+            preferredLanguageCode: AppState.Language.pt.rawValue,
+            userType: selectedUserType
+        )
     }
 }
