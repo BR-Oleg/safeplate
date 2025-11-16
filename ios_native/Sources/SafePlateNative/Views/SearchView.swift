@@ -98,7 +98,7 @@ struct SearchView: View {
                         }
                     } else if !searchHistory.isEmpty {
                         Menu {
-                            ForEach(searchHistory, id: \\.self) { item in
+                            ForEach(searchHistory, id: \.self) { item in
                                 Button(item) {
                                     searchText = item
                                 }
