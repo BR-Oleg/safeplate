@@ -37,12 +37,14 @@ workflows:
       - name: Flutter pub get
         script: |
           flutter --version
-          flutter pub get || true
+          flutter clean
+          flutter pub get
       - name: Install CocoaPods
         script: |
           cd ios
+          rm -rf Pods Podfile.lock
           pod --version
-          pod install --clean-install --repo-update
+          pod install --repo-update
       - name: Verify Pods flags
         script: |
           cd ios
