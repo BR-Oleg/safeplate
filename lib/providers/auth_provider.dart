@@ -25,9 +25,7 @@ class AuthProvider with ChangeNotifier {
   GoogleSignIn? _googleSignIn;
   
   GoogleSignIn get googleSignIn {
-    _googleSignIn ??= GoogleSignIn(
-      scopes: ['email', 'profile'],
-    );
+    _googleSignIn ??= GoogleSignIn.instance;
     return _googleSignIn!;
   }
 
@@ -521,8 +519,18 @@ class AuthProvider with ChangeNotifier {
 
     try {
       // Iniciar fluxo de login do Google
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      
+      GoogleSignInAccount? googleUser;
+      try {
+        googleUser = await googleSignIn.authenticate();
+      } on GoogleSignInException catch (e) {
+        debugPrint('⚠️ Erro ao autenticar com Google: ${e.code}: $e');
+        await authSubscription.cancel();
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Se o usuário cancelou o fluxo de login
       if (googleUser == null) {
         await authSubscription.cancel();
         _isLoading = false;
@@ -558,9 +566,8 @@ class AuthProvider with ChangeNotifier {
       }
 
       // Se conseguimos a autenticação, usar normalmente
-      if (googleAuth != null && googleAuth.accessToken != null) {
+      if (googleAuth != null && googleAuth.idToken != null) {
         final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
         final userCredential = await _auth.signInWithCredential(credential);
@@ -747,7 +754,7 @@ class AuthProvider with ChangeNotifier {
       });
       
       if (firestoreUser != null) {
-        // Mesclar dados: manter dados locais se Firestore não tiver algo
+        // Atualizar usuário local com dados do Firestore
         _user = firestoreUser;
         // Salvar localmente também
         final prefs = await SharedPreferences.getInstance();
@@ -795,4 +802,3 @@ class AuthProvider with ChangeNotifier {
     }
   }
 }
-
