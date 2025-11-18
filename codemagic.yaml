@@ -165,6 +165,7 @@ workflows:
           xcrun simctl delete "$DEVICE_UDID" || true
     artifacts:
       - cm-artifacts/**
+      - ios/build/Build/Products/Debug-iphonesimulator/Runner.app
       - xcodebuild.log
   ios_native_simulator:
     name: iOS Native - Build + Screens
