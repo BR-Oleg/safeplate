@@ -23,6 +23,7 @@ class AuthProvider with ChangeNotifier {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   GoogleSignIn? _googleSignIn;
+  bool _isGoogleSignInInitialized = false;
   
   GoogleSignIn get googleSignIn {
     _googleSignIn ??= GoogleSignIn.instance;
@@ -506,6 +507,18 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    // Garantir que o GoogleSignIn esteja inicializado com o serverClientId (Web Client ID)
+    if (!_isGoogleSignInInitialized) {
+      try {
+        await googleSignIn.initialize(
+          serverClientId: '476899420653-32m5g35ltk24e92426rnpde37s0tpthu.apps.googleusercontent.com',
+        );
+        _isGoogleSignInInitialized = true;
+      } catch (e) {
+        debugPrint('⚠️ Erro ao inicializar GoogleSignIn: $e');
+      }
+    }
 
     // Criar listener ANTES de iniciar qualquer processo
     User? authenticatedUser;
