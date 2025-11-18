@@ -512,6 +512,7 @@ class AuthProvider with ChangeNotifier {
     if (!_isGoogleSignInInitialized) {
       try {
         await googleSignIn.initialize(
+          clientId: '476899420653-i68uga9ceqb8m9ovo1bpm9j7204ued3g.apps.googleusercontent.com',
           serverClientId: '476899420653-32m5g35ltk24e92426rnpde37s0tpthu.apps.googleusercontent.com',
         );
         _isGoogleSignInInitialized = true;
@@ -672,7 +673,11 @@ class AuthProvider with ChangeNotifier {
         }
       }
       _isLoading = false;
-      _errorMessage = 'Erro ao fazer login com Google';
+      if (e is GoogleSignInException) {
+        _errorMessage = 'Erro ao fazer login com Google: ${e.code}: $e';
+      } else {
+        _errorMessage = 'Erro ao fazer login com Google: ${e.toString()}';
+      }
       notifyListeners();
       return false;
     }
