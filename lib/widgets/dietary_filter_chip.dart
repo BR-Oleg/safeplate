@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/establishment.dart';
+import '../utils/translations.dart';
 
 class DietaryFilterChip extends StatelessWidget {
   final DietaryFilter filter;
@@ -17,6 +18,23 @@ class DietaryFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      onLongPress: filter == DietaryFilter.halal
+        ? () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(Translations.getText(context, 'halalExplanationTitle')),
+                content: Text(Translations.getText(context, 'halalExplanationBody')),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(Translations.getText(context, 'close')),
+                  ),
+                ],
+              ),
+            );
+          }
+        : null,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

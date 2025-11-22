@@ -247,8 +247,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
-                    labelText: 'Email',
-                    hintText: 'Email',
+                    labelText: Translations.getText(context, 'email'),
+                    hintText: Translations.getText(context, 'email'),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

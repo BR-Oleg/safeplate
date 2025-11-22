@@ -6,6 +6,8 @@ import 'providers/auth_provider.dart';
 import 'providers/establishment_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/review_provider.dart';
+import 'services/notification_service.dart';
+import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -24,6 +26,8 @@ void main() async {
     debugPrint('Verifique se google-services.json está em android/app/');
     // Continuar sem Firebase se não configurado
   }
+  
+  await NotificationService.initializeLocalNotifications();
   
   runApp(const SafePlateApp());
 }
@@ -46,43 +50,7 @@ class SafePlateApp extends StatelessWidget {
         title: 'Prato Seguro',
         debugShowCheckedModeBanner: false,
             locale: localeProvider.locale,
-        theme: ThemeData(
-          primarySwatch: Colors.green,
-          primaryColor: const Color(0xFF4CAF50),
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            iconTheme: IconThemeData(color: Colors.green),
-            titleTextStyle: TextStyle(
-              color: Colors.green,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4CAF50),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.grey),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.grey),
-            ),
-          ),
-        ),
+        theme: AppTheme.lightTheme,
         home: const SplashScreen(),
         routes: {
           '/login': (context) => const LoginScreen(),

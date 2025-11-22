@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/user.dart';
 import '../models/establishment.dart';
 import 'firebase_service.dart';
@@ -9,6 +10,10 @@ class NotificationService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static String? _fcmToken;
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  static bool _localInitialized = false;
+  static String? _currentUserId;
 
   /// Envia notificação para usuários Premium sobre novo estabelecimento certificado
   static Future<void> notifyNewCertifiedEstablishment(Establishment establishment) async {
@@ -80,15 +85,28 @@ class NotificationService {
       final querySnapshot = await _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .limit(50)
           .get();
 
-      return querySnapshot.docs.map((doc) {
+      final notifications = querySnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
+
+      // Ordenar por createdAt (mais recentes primeiro) no cliente
+      notifications.sort((a, b) {
+        final aTs = a['createdAt'];
+        final bTs = b['createdAt'];
+        if (aTs is Timestamp && bTs is Timestamp) {
+          return bTs.compareTo(aTs); // desc
+        }
+        return 0;
+      });
+
+      if (notifications.length > 50) {
+        return notifications.sublist(0, 50);
+      }
+      return notifications;
     } catch (e) {
       debugPrint('❌ Erro ao buscar notificações: $e');
       return [];
@@ -109,6 +127,7 @@ class NotificationService {
   /// Inicializa Firebase Cloud Messaging e registra token
   static Future<void> initialize(String userId) async {
     try {
+      _currentUserId = userId;
       // Solicitar permissão para notificações
       NotificationSettings settings = await _messaging.requestPermission(
         alert: true,
@@ -138,21 +157,23 @@ class NotificationService {
       }
 
       // Configurar handlers para notificações em foreground
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         debugPrint('📢 Notificação recebida (foreground): ${message.notification?.title}');
-        // Aqui você pode mostrar uma notificação local ou atualizar a UI
+        await _handleRemoteMessage(message, showLocal: true);
       });
 
       // Handler para quando o app é aberto a partir de uma notificação
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
         debugPrint('📢 App aberto a partir de notificação: ${message.notification?.title}');
-        // Navegar para a tela apropriada baseado no tipo de notificação
+        await _handleRemoteMessage(message, showLocal: false);
+        // Navegar para a tela apropriada baseado no tipo de notificação (futuro)
       });
 
       // Verificar se o app foi aberto a partir de uma notificação (quando estava fechado)
       RemoteMessage? initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
         debugPrint('📢 App aberto a partir de notificação (inicial): ${initialMessage.notification?.title}');
+        await _handleRemoteMessage(initialMessage, showLocal: false);
       }
     } catch (e) {
       debugPrint('❌ Erro ao inicializar FCM: $e');
@@ -188,5 +209,127 @@ class NotificationService {
       debugPrint('❌ Erro ao remover FCM token: $e');
     }
   }
-}
 
+  static Future<void> initializeLocalNotifications() async {
+    if (_localInitialized) return;
+
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(initSettings);
+    _localInitialized = true;
+
+    final androidPlugin =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
+
+    final iosPlugin =
+        _localNotifications.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+    await iosPlugin?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  }
+
+  static Future<void> showLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      if (!_localInitialized) {
+        await initializeLocalNotifications();
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        'nearby_safe_places',
+        'Locais seguros próximos',
+        channelDescription:
+            'Alertas quando você está perto de um local seguro',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await _localNotifications.show(
+        id,
+        title,
+        body,
+        details,
+      );
+    } catch (e) {
+      debugPrint('Erro ao exibir notificação local: $e');
+    }
+  }
+
+  static Future<void> showLocalNotificationAndSave({
+    required int id,
+    required String title,
+    required String body,
+    String type = 'local_alert',
+  }) async {
+    await showLocalNotification(id: id, title: title, body: body);
+
+    try {
+      final userId = _currentUserId;
+      if (userId == null) return;
+
+      await _firestore.collection('notifications').add({
+        'userId': userId,
+        'type': type,
+        'title': title,
+        'message': body,
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+        'source': 'app_local',
+      });
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar notificação local em Firestore: $e');
+    }
+  }
+
+  static Future<void> _handleRemoteMessage(RemoteMessage message, {required bool showLocal}) async {
+    try {
+      final userId = _currentUserId;
+      if (userId == null) return;
+
+      final notification = message.notification;
+      final data = message.data;
+
+      final title = notification?.title ?? (data['title'] as String? ?? '');
+      final body = notification?.body ?? (data['body'] as String? ?? '');
+      final type = (data['type'] as String?) ?? 'push';
+
+      await _firestore.collection('notifications').add({
+        'userId': userId,
+        'type': type,
+        'title': title,
+        'message': body,
+        'data': data,
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+
+      if (showLocal && title.isNotEmpty && body.isNotEmpty) {
+        await showLocalNotification(
+          id: message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: title,
+          body: body,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao processar RemoteMessage: $e');
+    }
+  }
+}

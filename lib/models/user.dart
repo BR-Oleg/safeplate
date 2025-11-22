@@ -20,6 +20,7 @@ class User {
   final String? name;
   final UserType type;
   final String? photoUrl;
+  final String? coverPhotoUrl;
   final String? preferredLanguage; // Idioma preferido do usuário (pt, en, es)
   
   // Sistema de gamificação
@@ -30,6 +31,9 @@ class User {
   final int totalCheckIns; // Total de check-ins realizados
   final int totalReviews; // Total de avaliações realizadas
   final int totalReferrals; // Total de indicações de novos locais
+  final int followersCount; // Total de seguidores
+  final int followingCount; // Total de perfis seguidos
+  final List<String> dietaryPreferences;
   final DateTime createdAt; // Data de cadastro
 
   User({
@@ -38,6 +42,7 @@ class User {
     this.name,
     required this.type,
     this.photoUrl,
+    this.coverPhotoUrl,
     this.preferredLanguage,
     this.points = 0,
     this.seal = UserSeal.bronze,
@@ -46,6 +51,9 @@ class User {
     this.totalCheckIns = 0,
     this.totalReviews = 0,
     this.totalReferrals = 0,
+    this.followersCount = 0,
+    this.followingCount = 0,
+    this.dietaryPreferences = const [],
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -81,6 +89,7 @@ class User {
         orElse: () => UserType.user,
       ),
       photoUrl: json['photoUrl'] as String?,
+      coverPhotoUrl: json['coverPhotoUrl'] as String?,
       preferredLanguage: json['preferredLanguage'] as String?,
       points: json['points'] as int? ?? 0,
       seal: json['seal'] != null
@@ -94,6 +103,13 @@ class User {
       totalCheckIns: json['totalCheckIns'] as int? ?? 0,
       totalReviews: json['totalReviews'] as int? ?? 0,
       totalReferrals: json['totalReferrals'] as int? ?? 0,
+      followersCount: json['followersCount'] as int? ?? 0,
+      followingCount: json['followingCount'] as int? ?? 0,
+      dietaryPreferences: (json['dietaryPreferences'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const [],
       createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
     );
   }
@@ -105,6 +121,7 @@ class User {
       'name': name,
       'type': type.toString().split('.').last,
       'photoUrl': photoUrl,
+      'coverPhotoUrl': coverPhotoUrl,
       'preferredLanguage': preferredLanguage,
       'points': points,
       'seal': seal.toString().split('.').last,
@@ -113,6 +130,9 @@ class User {
       'totalCheckIns': totalCheckIns,
       'totalReviews': totalReviews,
       'totalReferrals': totalReferrals,
+      'followersCount': followersCount,
+      'followingCount': followingCount,
+      'dietaryPreferences': dietaryPreferences,
       'createdAt': createdAt.toIso8601String(),
     };
   }

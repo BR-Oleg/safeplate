@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/maintenance_service.dart';
+import '../utils/translations.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
+import 'language_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,6 +32,25 @@ class _SplashScreenState extends State<SplashScreen> {
     if (maintenanceStatus['enabled'] == true) {
       if (!mounted) return;
       _showMaintenanceDialog(maintenanceStatus['message'] as String);
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final hasSelectedLanguage = prefs.getBool('hasSelectedLanguage') ?? false;
+    final hasSeenOnboarding =
+        prefs.getBool(OnboardingScreen.hasSeenOnboardingKey) ?? false;
+
+    if (!hasSelectedLanguage) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
+      );
+      return;
+    }
+
+    if (!hasSeenOnboarding) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
       return;
     }
 
@@ -102,6 +125,15 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              Translations.getText(context, 'appSlogan'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.withOpacity(0.7),
               ),
             ),
             const SizedBox(height: 8),

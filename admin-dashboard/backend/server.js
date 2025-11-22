@@ -33,6 +33,17 @@ try {
 const db = admin.firestore();
 const auth = admin.auth();
 
+function convertFirestoreData(data) {
+  const converted = { ...data };
+  Object.keys(converted).forEach((key) => {
+    const value = converted[key];
+    if (value && typeof value.toDate === 'function') {
+      converted[key] = value.toDate().toISOString();
+    }
+  });
+  return converted;
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -175,6 +186,105 @@ app.post('/api/maintenance/toggle', authenticateAdmin, async (req, res) => {
   }
 });
 
+// ============ APP CONFIG / TEMA SAZONAL ============
+
+// Obtém o tema sazonal atual configurado para o app
+app.get('/api/app-config/seasonal-theme', authenticateAdmin, async (req, res) => {
+  try {
+    const doc = await db.collection('appConfig').doc('global').get();
+    const data = doc.exists ? doc.data() : {};
+    res.json({
+      seasonalTheme: data.seasonalTheme || null,
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar tema sazonal:', error);
+    res.status(500).json({
+      error: error.message || 'Erro ao buscar tema sazonal',
+      details: error.stack,
+    });
+  }
+});
+
+// Define/atualiza o tema sazonal do app (ex.: 'none', 'christmas', 'carnival')
+app.post('/api/app-config/seasonal-theme', authenticateAdmin, async (req, res) => {
+  try {
+    const { seasonalTheme } = req.body;
+
+    await db.collection('appConfig').doc('global').set(
+      {
+        seasonalTheme: seasonalTheme || null,
+        seasonalThemeUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        seasonalThemeUpdatedBy: req.user?.uid || 'admin-dashboard',
+      },
+      { merge: true }
+    );
+
+    res.json({ success: true, seasonalTheme: seasonalTheme || null });
+  } catch (error) {
+    console.error('❌ Erro ao salvar tema sazonal:', error);
+    res.status(500).json({ error: error.message || 'Erro ao salvar tema sazonal' });
+  }
+});
+
+// ============ APP CONFIG / HOME PROMOS (BANNERS INICIAIS) ============
+
+app.get('/api/app-config/home-promos', authenticateAdmin, async (req, res) => {
+  try {
+    const doc = await db.collection('appConfig').doc('global').get();
+    const data = doc.exists ? doc.data() : {};
+
+    res.json({
+      homeFairEnabled: data.homeFairEnabled === undefined ? false : !!data.homeFairEnabled,
+      homeFairImageUrl: data.homeFairImageUrl || '',
+      homeFairTitleText: data.homeFairTitleText || '',
+      homeFairDescriptionText: data.homeFairDescriptionText || '',
+      homeFairPrimaryLabelText: data.homeFairPrimaryLabelText || '',
+      homeFairPrimaryUrl: data.homeFairPrimaryUrl || '',
+      homeWhatsAppEnabled: data.homeWhatsAppEnabled === undefined ? true : !!data.homeWhatsAppEnabled,
+      homeWhatsAppImageUrl: data.homeWhatsAppImageUrl || '',
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar home-promos:', error);
+    res.status(500).json({ error: error.message || 'Erro ao buscar configurações de home-promos' });
+  }
+});
+
+app.post('/api/app-config/home-promos', authenticateAdmin, async (req, res) => {
+  try {
+    const {
+      homeFairEnabled,
+      homeFairImageUrl,
+      homeFairTitleText,
+      homeFairDescriptionText,
+      homeFairPrimaryLabelText,
+      homeFairPrimaryUrl,
+      homeWhatsAppEnabled,
+      homeWhatsAppImageUrl,
+    } = req.body;
+
+    const updates = {
+      homePromosUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      homePromosUpdatedBy: req.user?.uid || 'admin-dashboard',
+    };
+
+    if (homeFairEnabled !== undefined) updates.homeFairEnabled = !!homeFairEnabled;
+    if (homeFairImageUrl !== undefined) updates.homeFairImageUrl = homeFairImageUrl || '';
+    if (homeFairTitleText !== undefined) updates.homeFairTitleText = homeFairTitleText || '';
+    if (homeFairDescriptionText !== undefined) updates.homeFairDescriptionText = homeFairDescriptionText || '';
+    if (homeFairPrimaryLabelText !== undefined) updates.homeFairPrimaryLabelText = homeFairPrimaryLabelText || '';
+    if (homeFairPrimaryUrl !== undefined) updates.homeFairPrimaryUrl = homeFairPrimaryUrl || '';
+    if (homeWhatsAppEnabled !== undefined) updates.homeWhatsAppEnabled = !!homeWhatsAppEnabled;
+    if (homeWhatsAppImageUrl !== undefined) updates.homeWhatsAppImageUrl = homeWhatsAppImageUrl || '';
+
+    await db.collection('appConfig').doc('global').set(updates, { merge: true });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Erro ao salvar home-promos:', error);
+    res.status(500).json({ error: error.message || 'Erro ao salvar configurações de home-promos' });
+  }
+});
+
 // ============ GERENCIAMENTO DE USUÁRIOS ============
 app.get('/api/users', authenticateAdmin, async (req, res) => {
   try {
@@ -296,12 +406,13 @@ app.get('/api/establishments', authenticateAdmin, async (req, res) => {
 
     const establishments = paginatedDocs.map(doc => {
       const data = doc.data();
+      const convertedData = convertFirestoreData(data);
       // Garantir que o ID do documento do Firestore sempre tenha prioridade
       const establishment = {
-        ...data,
+        ...convertedData,
         id: doc.id, // ID do documento do Firestore (sempre sobrescreve qualquer campo 'id' nos dados)
       };
-      console.log(`📋 Estabelecimento: nome=${data.name}, id_documento=${doc.id}, id_dados=${data.id || 'não existe'}`);
+      console.log(`📋 Estabelecimento: nome=${convertedData.name}, id_documento=${doc.id}, id_dados=${convertedData.id || 'não existe'}`);
       return establishment;
     });
 
@@ -365,6 +476,310 @@ app.put('/api/establishments/:establishmentId/difficulty', authenticateAdmin, as
       error: error.message || 'Erro ao atualizar nível de dificuldade',
       details: error.stack 
     });
+  }
+});
+
+app.put('/api/establishments/:establishmentId/certification', authenticateAdmin, async (req, res) => {
+  try {
+    const { establishmentId } = req.params;
+    const { certificationStatus, lastInspectionDate, lastInspectionStatus } = req.body;
+
+    const establishmentRef = db.collection('establishments').doc(establishmentId);
+    const establishmentDoc = await establishmentRef.get();
+
+    if (!establishmentDoc.exists) {
+      return res.status(404).json({ error: 'Estabelecimento não encontrado' });
+    }
+
+    const updates = {};
+
+    if (certificationStatus !== undefined) {
+      const validStatuses = ['none', 'pending', 'scheduled', 'certified'];
+      if (!validStatuses.includes(certificationStatus)) {
+        return res.status(400).json({ error: 'Status de certificação inválido. Use: none, pending, scheduled ou certified' });
+      }
+      updates.certificationStatus = certificationStatus;
+    }
+
+    if (lastInspectionDate !== undefined) {
+      if (lastInspectionDate) {
+        const date = new Date(lastInspectionDate);
+        if (isNaN(date.getTime())) {
+          return res.status(400).json({ error: 'Data de última inspeção inválida' });
+        }
+        updates.lastInspectionDate = date.toISOString();
+      } else {
+        updates.lastInspectionDate = null;
+      }
+    }
+
+    if (lastInspectionStatus !== undefined) {
+      updates.lastInspectionStatus = lastInspectionStatus || null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
+
+    updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+    updates.updatedBy = req.user.uid;
+
+    await establishmentRef.set(updates, { merge: true });
+
+    res.json({ success: true, message: 'Certificação atualizada com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar certificação do estabelecimento:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar certificação' });
+  }
+});
+
+app.put('/api/establishments/:establishmentId/boost', authenticateAdmin, async (req, res) => {
+  try {
+    const { establishmentId } = req.params;
+    const { isBoosted, durationDays } = req.body;
+
+    if (typeof isBoosted !== 'boolean') {
+      return res.status(400).json({ error: 'Campo isBoosted é obrigatório e deve ser booleano' });
+    }
+
+    const establishmentRef = db.collection('establishments').doc(establishmentId);
+    const establishmentDoc = await establishmentRef.get();
+
+    if (!establishmentDoc.exists) {
+      return res.status(404).json({ error: 'Estabelecimento não encontrado' });
+    }
+
+    const updates = {
+      isBoosted,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: req.user.uid,
+    };
+
+    if (isBoosted) {
+      const days = parseInt(durationDays, 10) || 30;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + days);
+      updates.boostExpiresAt = expiresAt.toISOString();
+    } else {
+      updates.boostExpiresAt = null;
+    }
+
+    await establishmentRef.set(updates, { merge: true });
+
+    res.json({ success: true, message: `Impulsionamento ${isBoosted ? 'ativado' : 'desativado'} com sucesso` });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar impulsionamento do estabelecimento:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar impulsionamento' });
+  }
+});
+
+// ============ SOLICITAÇÕES DE CERTIFICAÇÃO ============
+app.get('/api/certification-requests', authenticateAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = db.collection('certificationRequests');
+
+    if (status) {
+      query = query.where('status', '==', status);
+    }
+
+    let snapshot;
+    try {
+      snapshot = await query.orderBy('createdAt', 'desc').get();
+    } catch (error) {
+      console.warn('⚠️ Não foi possível ordenar por createdAt em certificationRequests, tentando sem orderBy:', error.message);
+      snapshot = await query.get();
+    }
+
+    const requests = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const converted = convertFirestoreData(data);
+      return {
+        id: doc.id,
+        ...converted,
+      };
+    });
+
+    res.json({ requests, total: requests.length });
+  } catch (error) {
+    console.error('❌ Erro ao buscar solicitações de certificação:', error);
+    res.status(500).json({ error: error.message || 'Erro ao buscar solicitações de certificação' });
+  }
+});
+
+app.put('/api/certification-requests/:requestId/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status, decisionNote } = req.body;
+
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Status inválido. Use: pending, approved, rejected ou cancelled' });
+    }
+
+    const requestRef = db.collection('certificationRequests').doc(requestId);
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) {
+      return res.status(404).json({ error: 'Solicitação de certificação não encontrada' });
+    }
+
+    const updates = {
+      status,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: req.user.uid,
+    };
+
+    if (decisionNote !== undefined) {
+      updates.decisionNote = decisionNote || null;
+    }
+
+    await requestRef.set(updates, { merge: true });
+
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar status da solicitação de certificação:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar status da solicitação de certificação' });
+  }
+});
+
+app.get('/api/referrals', authenticateAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = db.collection('referrals');
+
+    if (status) {
+      query = query.where('status', '==', status);
+    }
+
+    let snapshot;
+    try {
+      snapshot = await query.orderBy('createdAt', 'desc').get();
+    } catch (error) {
+      console.warn('⚠️ Não foi possível ordenar por createdAt em referrals, tentando sem orderBy:', error.message);
+      snapshot = await query.get();
+    }
+
+    const referrals = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const converted = convertFirestoreData(data);
+      return {
+        id: doc.id,
+        ...converted,
+      };
+    });
+
+    res.json({ referrals, total: referrals.length });
+  } catch (error) {
+    console.error('❌ Erro ao buscar indicações:', error);
+    res.status(500).json({ error: error.message || 'Erro ao buscar indicações' });
+  }
+});
+
+app.put('/api/referrals/:referralId/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { referralId } = req.params;
+    const { status, decisionNote } = req.body;
+
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Status inválido. Use: pending, approved, rejected ou cancelled' });
+    }
+
+    const referralRef = db.collection('referrals').doc(referralId);
+    const referralDoc = await referralRef.get();
+    if (!referralDoc.exists) {
+      return res.status(404).json({ error: 'Indicação não encontrada' });
+    }
+
+    const referralData = referralDoc.data();
+    const currentStatus = referralData.status || 'pending';
+
+    const updates = {
+      status,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: req.user.uid,
+    };
+
+    if (decisionNote !== undefined) {
+      updates.decisionNote = decisionNote || null;
+    }
+
+    let establishmentId = referralData.establishmentId;
+
+    if (status === 'approved' && currentStatus !== 'approved') {
+      if (
+        referralData.establishmentName &&
+        referralData.latitude !== undefined &&
+        referralData.longitude !== undefined
+      ) {
+        const establishmentData = {
+          name: referralData.establishmentName,
+          category: referralData.establishmentCategory || 'restaurant',
+          latitude: referralData.latitude,
+          longitude: referralData.longitude,
+          address: referralData.address || null,
+          dietaryOptions: Array.isArray(referralData.dietaryOptions)
+            ? referralData.dietaryOptions
+            : [],
+          difficultyLevel: 'popular',
+          certificationStatus: 'none',
+          isOpen: true,
+          ownerId: null,
+          premiumUntil: null,
+          isBoosted: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: referralData.userId || null,
+          source: 'referral',
+          referralId: referralId,
+        };
+
+        const establishmentRef = await db.collection('establishments').add(establishmentData);
+        establishmentId = establishmentRef.id;
+        updates.establishmentId = establishmentId;
+      } else {
+        console.warn('⚠️ Indicação sem dados suficientes para criar estabelecimento', {
+          referralId,
+        });
+      }
+
+      const userId = referralData.userId;
+      if (userId) {
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({
+          points: admin.firestore.FieldValue.increment(50),
+          totalReferrals: admin.firestore.FieldValue.increment(1),
+          pointsHistory: admin.firestore.FieldValue.arrayUnion({
+            points: 50,
+            reason: 'Referral approved',
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            adminId: req.user.uid,
+            referralId,
+          }),
+        });
+        updates.pointsAwarded = 50;
+
+        try {
+          const title = '🎉 Sua indicação foi aprovada!';
+          const placeName = referralData.establishmentName || 'um local indicado';
+          const body = `O local ${placeName} foi publicado no Prato Seguro. Obrigado por ajudar outras pessoas a comer com segurança!`;
+
+          await sendPushNotification(userId, title, body, {
+            type: 'referral_approved',
+            referralId,
+            establishmentId: establishmentId || '',
+          });
+        } catch (notifyError) {
+          console.error('⚠️ Erro ao enviar notificação de indicação aprovada:', notifyError);
+        }
+      }
+    }
+
+    await referralRef.set(updates, { merge: true });
+
+    res.json({ success: true, status, establishmentId: updates.establishmentId || establishmentId || null });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar status da indicação:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar status da indicação' });
   }
 });
 

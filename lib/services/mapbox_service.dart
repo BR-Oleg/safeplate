@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:permission_handler/permission_handler.dart' as ph;
 import '../models/establishment.dart';
 
 class MapboxService {
@@ -27,17 +28,20 @@ class MapboxService {
         return null;
       }
 
-      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
-      if (permission == geo.LocationPermission.denied) {
-        permission = await geo.Geolocator.requestPermission();
-        if (permission == geo.LocationPermission.denied) {
-          debugPrint('Permissão de localização negada');
-          return null;
-        }
+      // Usar permission_handler para pedir permissão (evita bug do Geolocator ao tratar grantResults vazios)
+      ph.PermissionStatus status = await ph.Permission.locationWhenInUse.status;
+
+      if (status.isDenied || status.isRestricted) {
+        status = await ph.Permission.locationWhenInUse.request();
       }
 
-      if (permission == geo.LocationPermission.deniedForever) {
+      if (status.isPermanentlyDenied) {
         debugPrint('Permissão de localização negada permanentemente');
+        return null;
+      }
+
+      if (!status.isGranted) {
+        debugPrint('Permissão de localização não concedida (status: $status)');
         return null;
       }
 

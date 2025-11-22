@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../providers/review_provider.dart';
 import '../models/user.dart';
@@ -83,7 +85,7 @@ class BusinessDashboardScreen extends StatelessWidget {
                             user.email,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey.shade600,
+                              color: Colors.grey.shade800,
                             ),
                           ),
                         ],
@@ -94,6 +96,8 @@ class BusinessDashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+            _buildBusinessPitchAndPlans(context),
+            const SizedBox(height: 24),
             
             // Estatísticas rápidas
             _buildQuickStats(context, user.id),
@@ -102,6 +106,136 @@ class BusinessDashboardScreen extends StatelessWidget {
             // Estabelecimentos cadastrados
             _buildEstablishmentsList(context, user.id),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBusinessPitchAndPlans(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              Translations.getText(context, 'businessInstitutionalPitchTitle'),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              Translations.getText(context, 'businessInstitutionalPitchDescription'),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              Translations.getText(context, 'businessPlans'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _buildPlanChip(context, 'basicPlan')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildPlanChip(context, 'intermediatePlan')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildPlanChip(context, 'goldPlan')),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              Translations.getText(context, 'whatsAppContactForPlans'),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await _launchWhatsApp(
+                    context,
+                    Translations.getText(context, 'businessPlansWhatsAppMessage'),
+                  );
+                },
+                icon: const Icon(Icons.chat),
+                label: Text(Translations.getText(context, 'talkOnWhatsApp')),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.trending_up, color: Colors.purple.shade700, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  Translations.getText(context, 'investorPitchTitle'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              Translations.getText(context, 'investorPitchDescription'),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await _launchWhatsApp(
+                    context,
+                    Translations.getText(context, 'investorPitchWhatsAppMessage'),
+                  );
+                },
+                icon: const Icon(Icons.play_arrow),
+                label: Text(
+                  Translations.getText(context, 'investorPitchButton'),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlanChip(BuildContext context, String key) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Center(
+        child: Text(
+          Translations.getText(context, key),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.green.shade800,
+          ),
         ),
       ),
     );
@@ -356,6 +490,44 @@ class BusinessManageEstablishmentScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _requestTechnicalCertification(BuildContext context) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.user;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(Translations.getText(context, 'certificationRequestError') ?? 'Erro ao solicitar certificação'),
+          ),
+        );
+        return;
+      }
+
+      await FirebaseService.createCertificationRequest(
+        establishmentId: establishment.id,
+        establishmentName: establishment.name,
+        ownerId: user.id,
+        ownerName: user.name ?? '',
+      );
+
+      await FirebaseService.updateEstablishment(establishment.id, {
+        'certificationStatus': 'pending',
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(Translations.getText(context, 'certificationRequestSent') ?? 'Solicitação de certificação enviada com sucesso'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(Translations.getText(context, 'certificationRequestError') ?? 'Erro ao solicitar certificação'),
+        ),
+      );
+    }
+  }
+
   Widget _buildInfoTab(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -427,6 +599,79 @@ class BusinessManageEstablishmentScreen extends StatelessWidget {
                   _buildInfoRow(Translations.getText(context, 'category'), CategoryTranslator.translate(context, establishment.category)),
                   _buildInfoRow(Translations.getText(context, 'address'), Translations.getText(context, 'toDefine')),
                   _buildInfoRow(Translations.getText(context, 'status'), establishment.isOpen ? Translations.getText(context, 'open') : Translations.getText(context, 'closed')),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    Translations.getText(context, 'technicalCertification'),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Divider(),
+                  Text(
+                    Translations.getText(context, 'technicalCertificationDescription'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        Translations.getText(context, 'certificationStatusLabel'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        establishment.certificationStatus.getLabel(context),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: establishment.certificationStatus == TechnicalCertificationStatus.certified
+                              ? Colors.green
+                              : Colors.grey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await _requestTechnicalCertification(context);
+                      },
+                      icon: const Icon(Icons.verified_outlined),
+                      label: Text(Translations.getText(context, 'requestTechnicalCertification') ?? 'Solicitar certificação técnica'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final baseMessage = Translations.getText(context, 'technicalCertificationWhatsAppMessage');
+                        final fullMessage = '$baseMessage\nEstabelecimento: ${establishment.name}';
+                        await _launchWhatsApp(context, fullMessage);
+                      },
+                      icon: const Icon(Icons.chat),
+                      label: Text(Translations.getText(context, 'talkOnWhatsApp')),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -621,6 +866,22 @@ class BusinessManageEstablishmentScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+Future<void> _launchWhatsApp(BuildContext context, String message) async {
+  const phone = '5511999999999';
+  final encodedMessage = Uri.encodeComponent(message);
+  final uri = Uri.parse('https://wa.me/$phone?text=$encodedMessage');
+
+  try {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Não foi possível abrir o WhatsApp: $e'),
       ),
     );
   }

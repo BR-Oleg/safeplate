@@ -56,7 +56,7 @@ class _CheckInsScreenState extends State<CheckInsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Histórico de Check-ins'),
+        title: Text(Translations.getText(context, 'checkInHistory')),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -68,7 +68,7 @@ class _CheckInsScreenState extends State<CheckInsScreen> {
                       Icon(Icons.location_off, size: 64, color: Colors.grey.shade400),
                       const SizedBox(height: 16),
                       Text(
-                        'Nenhum check-in realizado',
+                        Translations.getText(context, 'noCheckInsYet'),
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey.shade600,
@@ -76,7 +76,7 @@ class _CheckInsScreenState extends State<CheckInsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Faça check-in nos estabelecimentos que visitar!',
+                        Translations.getText(context, 'checkInEncouragement'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade500,

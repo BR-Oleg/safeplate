@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Por favor, informe o email'),
+          content: Text(Translations.getText(context, 'loginEnterEmail')),
           backgroundColor: Colors.red,
         ),
       );
@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_emailController.text.trim().contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Por favor, informe um email válido'),
+          content: Text(Translations.getText(context, 'loginEnterValidEmail')),
           backgroundColor: Colors.red,
         ),
       );
@@ -62,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Por favor, informe a senha'),
+          content: Text(Translations.getText(context, 'loginEnterPassword')),
           backgroundColor: Colors.red,
         ),
       );
@@ -114,6 +114,157 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(errorMessage),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleFacebookLogin() async {
+    // Verificar manutenção antes de fazer login
+    final maintenanceStatus = await MaintenanceService.checkMaintenanceStatus();
+    if (maintenanceStatus['enabled'] == true) {
+      _showMaintenanceDialog(maintenanceStatus['message'] as String);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    String? languageCode;
+    try {
+      final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      languageCode = _selectedLanguage ?? localeProvider.locale.languageCode;
+    } catch (e) {
+      languageCode = _selectedLanguage ?? 'pt';
+    }
+
+    final success = await authProvider.loginWithFacebook(
+      _selectedUserType,
+      preferredLanguage: languageCode,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (success) {
+      final userType = authProvider.user?.type == UserType.business
+          ? Translations.getText(context, 'business')
+          : Translations.getText(context, 'user');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${Translations.getText(context, 'loginAs')} $userType! ✅'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      final errorMessage = authProvider.errorMessage ?? Translations.getText(context, 'loginError');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleAppleLogin() async {
+    // Verificar manutenção antes de fazer login
+    final maintenanceStatus = await MaintenanceService.checkMaintenanceStatus();
+    if (maintenanceStatus['enabled'] == true) {
+      _showMaintenanceDialog(maintenanceStatus['message'] as String);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    String? languageCode;
+    try {
+      final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      languageCode = _selectedLanguage ?? localeProvider.locale.languageCode;
+    } catch (e) {
+      languageCode = _selectedLanguage ?? 'pt';
+    }
+
+    final success = await authProvider.loginWithApple(
+      _selectedUserType,
+      preferredLanguage: languageCode,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    if (success) {
+      final userType = authProvider.user?.type == UserType.business
+          ? Translations.getText(context, 'business')
+          : Translations.getText(context, 'user');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${Translations.getText(context, 'loginAs')} $userType! ✅'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      final errorMessage = authProvider.errorMessage ?? Translations.getText(context, 'loginError');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Translations.getText(context, 'loginEnterValidEmailForReset'),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    try {
+      await authProvider.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Translations.getText(context, 'passwordResetEmailSent'),
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Translations.getText(context, 'passwordResetEmailError'),
+          ),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -285,31 +436,48 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _isLoading ? null : _handleForgotPassword,
+                  child: Text(
+                    Translations.getText(context, 'forgotPassword'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Botão de login
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleLogin,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+              AnimatedScale(
+                scale: _isLoading ? 0.98 : 1.0,
+                duration: const Duration(milliseconds: 150),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.login, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              Translations.getText(context, 'doLogin'),
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
                         ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.login, size: 20),
-                          const SizedBox(width: 8),
-                          Text(Translations.getText(context, 'doLogin'), style: const TextStyle(fontSize: 16)),
-                        ],
-                      ),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -334,6 +502,48 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _handleGoogleLogin,
                 text: Translations.getText(context, 'continueWithGoogle'),
                 isLoading: _isLoading,
+              ),
+              const SizedBox(height: 12),
+
+              // Botões de login social adicionais
+              OutlinedButton(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              Translations.getText(
+                                context,
+                                'socialLoginComingSoon',
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                child: Text(
+                  Translations.getText(context, 'continueWithFacebook'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              Translations.getText(
+                                context,
+                                'socialLoginComingSoon',
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                child: Text(
+                  Translations.getText(context, 'continueWithApple'),
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -389,6 +599,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                Translations.getText(context, 'dataProtectionMessage'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade500,
+                ),
+              ),
             ],
           ),
         ),
@@ -403,7 +622,9 @@ class _LoginScreenState extends State<LoginScreen> {
           _selectedUserType = type;
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? Colors.green.shade50 : Colors.grey.shade100,
@@ -433,7 +654,10 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.language, size: 18, color: Colors.grey.shade600),
+              Text(
+                _flagForCode(currentLang),
+                style: const TextStyle(fontSize: 18),
+              ),
               const SizedBox(width: 4),
               Text(
                 currentLang.toUpperCase(),
@@ -456,6 +680,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Row(
                 children: [
                   Text(
+                    _flagForCode('pt'),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
                     'PT',
                     style: TextStyle(
                       fontWeight: currentLang == 'pt' ? FontWeight.bold : FontWeight.normal,
@@ -476,6 +705,11 @@ class _LoginScreenState extends State<LoginScreen> {
               value: 'en',
               child: Row(
                 children: [
+                  Text(
+                    _flagForCode('en'),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 6),
                   Text(
                     'EN',
                     style: TextStyle(
@@ -498,6 +732,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Row(
                 children: [
                   Text(
+                    _flagForCode('es'),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
                     'ES',
                     style: TextStyle(
                       fontWeight: currentLang == 'es' ? FontWeight.bold : FontWeight.normal,
@@ -518,6 +757,18 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
+  }
+
+  String _flagForCode(String code) {
+    switch (code) {
+      case 'pt':
+        return '🇧🇷';
+      case 'es':
+        return '🇪🇸';
+      case 'en':
+      default:
+        return '🇺🇸';
+    }
   }
 
   void _showMaintenanceDialog(String message) {

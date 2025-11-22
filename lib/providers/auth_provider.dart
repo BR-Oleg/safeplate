@@ -4,6 +4,8 @@ import '../models/user_seal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../services/firebase_service.dart';
@@ -28,6 +30,78 @@ class AuthProvider with ChangeNotifier {
   GoogleSignIn get googleSignIn {
     _googleSignIn ??= GoogleSignIn.instance;
     return _googleSignIn!;
+  }
+
+  Future<void> updateProfilePhoto(String photoUrl) async {
+    if (_user == null) return;
+
+    try {
+      _user = model.User(
+        id: _user!.id,
+        email: _user!.email,
+        name: _user!.name,
+        type: _user!.type,
+        photoUrl: photoUrl,
+        coverPhotoUrl: _user!.coverPhotoUrl,
+        preferredLanguage: _user!.preferredLanguage,
+        points: _user!.points,
+        seal: _user!.seal,
+        isPremium: _user!.isPremium,
+        premiumExpiresAt: _user!.premiumExpiresAt,
+        totalCheckIns: _user!.totalCheckIns,
+        totalReviews: _user!.totalReviews,
+        totalReferrals: _user!.totalReferrals,
+        followersCount: _user!.followersCount,
+        followingCount: _user!.followingCount,
+        dietaryPreferences: _user!.dietaryPreferences,
+        createdAt: _user!.createdAt,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', json.encode(_user!.toJson()));
+
+      await FirebaseService.saveUserData(_user!);
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar foto de perfil: $e');
+    }
+  }
+
+  Future<void> updateCoverPhoto(String coverPhotoUrl) async {
+    if (_user == null) return;
+
+    try {
+      _user = model.User(
+        id: _user!.id,
+        email: _user!.email,
+        name: _user!.name,
+        type: _user!.type,
+        photoUrl: _user!.photoUrl,
+        coverPhotoUrl: coverPhotoUrl,
+        preferredLanguage: _user!.preferredLanguage,
+        points: _user!.points,
+        seal: _user!.seal,
+        isPremium: _user!.isPremium,
+        premiumExpiresAt: _user!.premiumExpiresAt,
+        totalCheckIns: _user!.totalCheckIns,
+        totalReviews: _user!.totalReviews,
+        totalReferrals: _user!.totalReferrals,
+        followersCount: _user!.followersCount,
+        followingCount: _user!.followingCount,
+        dietaryPreferences: _user!.dietaryPreferences,
+        createdAt: _user!.createdAt,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', json.encode(_user!.toJson()));
+
+      await FirebaseService.saveUserData(_user!);
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar capa do perfil: $e');
+    }
   }
 
   AuthProvider() {
@@ -113,8 +187,9 @@ class AuthProvider with ChangeNotifier {
             name: _user!.name,
             type: _user!.type,
             photoUrl: _user!.photoUrl,
+            coverPhotoUrl: _user!.coverPhotoUrl,
             preferredLanguage: preferredLanguage,
-            // Manter todos os dados de gamificação do Firestore
+            // Manter todos os dados de gamificação e engajamento do Firestore
             points: _user!.points,
             seal: _user!.seal,
             isPremium: _user!.isPremium,
@@ -122,6 +197,10 @@ class AuthProvider with ChangeNotifier {
             totalCheckIns: _user!.totalCheckIns,
             totalReviews: _user!.totalReviews,
             totalReferrals: _user!.totalReferrals,
+            followersCount: _user!.followersCount,
+            followingCount: _user!.followingCount,
+            dietaryPreferences: _user!.dietaryPreferences,
+            createdAt: _user!.createdAt,
           );
           // Atualizar apenas o idioma no Firestore (sem sobrescrever outros dados)
           FirebaseService.updateUserPreferredLanguage(_user!.id, preferredLanguage)
@@ -137,6 +216,7 @@ class AuthProvider with ChangeNotifier {
           name: firebaseUser.displayName,
           type: userTypeString == 'business' ? model.UserType.business : model.UserType.user,
           photoUrl: firebaseUser.photoURL,
+          coverPhotoUrl: null,
           preferredLanguage: preferredLanguage,
           // Dados de gamificação iniciados com valores padrão
           points: 0,
@@ -178,6 +258,7 @@ class AuthProvider with ChangeNotifier {
           name: firebaseUser.displayName,
           type: userTypeString == 'business' ? model.UserType.business : model.UserType.user,
           photoUrl: firebaseUser.photoURL,
+          coverPhotoUrl: null,
           preferredLanguage: preferredLanguage,
           // Dados de gamificação iniciados com valores padrão
           points: 0,
@@ -683,6 +764,155 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> loginWithFacebook(model.UserType userType, {String? preferredLanguage}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(permissions: ['email']);
+
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        _isLoading = false;
+        if (result.status == LoginStatus.cancelled) {
+          // Usuário cancelou, não mostrar erro agressivo
+          _errorMessage = null;
+        } else {
+          _errorMessage = 'Erro ao fazer login com Facebook. Tente novamente.';
+        }
+        notifyListeners();
+        return false;
+      }
+
+      final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.token);
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      if (userCredential.user == null) {
+        _isLoading = false;
+        _errorMessage = 'Erro ao fazer login com Facebook. Usuário não encontrado.';
+        notifyListeners();
+        return false;
+      }
+
+      _firebaseUser = userCredential;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userType', userType.toString().split('.').last);
+
+      await _loadUserFromFirebase(userCredential.user!, preferredLanguage: preferredLanguage);
+
+      if (_user != null) {
+        NotificationService.initialize(_user!.id).catchError((e) {
+          debugPrint('⚠️ Erro ao inicializar notificações (Facebook): $e');
+        });
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _isLoading = false;
+      debugPrint('❌ Erro Firebase Auth (Facebook): ${e.code} - ${e.message}');
+      _errorMessage = _getAuthErrorMessage(e.code);
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _isLoading = false;
+      debugPrint('❌ Erro inesperado no login com Facebook: $e');
+      debugPrint('Stack trace: $stackTrace');
+      _errorMessage = 'Erro ao fazer login com Facebook. Tente novamente.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithApple(model.UserType userType, {String? preferredLanguage}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final bool isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        _isLoading = false;
+        _errorMessage = 'Login com Apple não está disponível neste dispositivo.';
+        notifyListeners();
+        return false;
+      }
+
+      final AuthorizationCredentialAppleID appleCredential =
+          await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      if (appleCredential.identityToken == null) {
+        _isLoading = false;
+        _errorMessage = 'Erro ao obter credenciais da Apple. Tente novamente.';
+        notifyListeners();
+        return false;
+      }
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(oauthCredential);
+
+      if (userCredential.user == null) {
+        _isLoading = false;
+        _errorMessage = 'Erro ao fazer login com Apple. Usuário não encontrado.';
+        notifyListeners();
+        return false;
+      }
+
+      _firebaseUser = userCredential;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userType', userType.toString().split('.').last);
+
+      await _loadUserFromFirebase(userCredential.user!, preferredLanguage: preferredLanguage);
+
+      if (_user != null) {
+        NotificationService.initialize(_user!.id).catchError((e) {
+          debugPrint('⚠️ Erro ao inicializar notificações (Apple): $e');
+        });
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      _isLoading = false;
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // Usuário cancelou, não tratar como erro grave
+        _errorMessage = null;
+      } else {
+        debugPrint('❌ Erro na autorização Apple: ${e.code} - $e');
+        _errorMessage = 'Erro ao fazer login com Apple. Tente novamente.';
+      }
+      notifyListeners();
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _isLoading = false;
+      debugPrint('❌ Erro Firebase Auth (Apple): ${e.code} - ${e.message}');
+      _errorMessage = _getAuthErrorMessage(e.code);
+      notifyListeners();
+      return false;
+    } catch (e, stackTrace) {
+      _isLoading = false;
+      debugPrint('❌ Erro inesperado no login com Apple: $e');
+      debugPrint('Stack trace: $stackTrace');
+      _errorMessage = 'Erro ao fazer login com Apple. Tente novamente.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     try {
       // Remover token FCM antes de fazer logout
@@ -736,7 +966,19 @@ class AuthProvider with ChangeNotifier {
         name: _user!.name,
         type: _user!.type,
         photoUrl: _user!.photoUrl,
+        coverPhotoUrl: _user!.coverPhotoUrl,
         preferredLanguage: languageCode,
+        points: _user!.points,
+        seal: _user!.seal,
+        isPremium: _user!.isPremium,
+        premiumExpiresAt: _user!.premiumExpiresAt,
+        totalCheckIns: _user!.totalCheckIns,
+        totalReviews: _user!.totalReviews,
+        totalReferrals: _user!.totalReferrals,
+        followersCount: _user!.followersCount,
+        followingCount: _user!.followingCount,
+        dietaryPreferences: _user!.dietaryPreferences,
+        createdAt: _user!.createdAt,
       );
       
       // Salvar localmente primeiro (não esperar Firestore)
@@ -752,6 +994,44 @@ class AuthProvider with ChangeNotifier {
       });
     } catch (e) {
       debugPrint('Erro ao atualizar idioma preferido: $e');
+    }
+  }
+
+  Future<void> updateDietaryPreferences(List<String> dietaryPreferences) async {
+    if (_user == null) return;
+
+    try {
+      _user = model.User(
+        id: _user!.id,
+        email: _user!.email,
+        name: _user!.name,
+        type: _user!.type,
+        photoUrl: _user!.photoUrl,
+        coverPhotoUrl: _user!.coverPhotoUrl,
+        preferredLanguage: _user!.preferredLanguage,
+        points: _user!.points,
+        seal: _user!.seal,
+        isPremium: _user!.isPremium,
+        premiumExpiresAt: _user!.premiumExpiresAt,
+        totalCheckIns: _user!.totalCheckIns,
+        totalReviews: _user!.totalReviews,
+        totalReferrals: _user!.totalReferrals,
+        followersCount: _user!.followersCount,
+        followingCount: _user!.followingCount,
+        dietaryPreferences: dietaryPreferences,
+        createdAt: _user!.createdAt,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', json.encode(_user!.toJson()));
+
+      FirebaseService.saveUserData(_user!).catchError((e) {
+        debugPrint('⚠️ Erro ao salvar preferências dietéticas no Firestore: $e');
+      });
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar preferências dietéticas: $e');
     }
   }
 

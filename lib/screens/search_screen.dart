@@ -8,11 +8,14 @@ import '../models/user.dart';
 import '../widgets/dietary_filter_chip.dart';
 import '../widgets/mapbox_map_widget.dart';
 import '../utils/translations.dart';
+import '../theme/app_theme.dart';
 import 'establishment_detail_screen.dart';
 import 'premium_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
+
+  static final GlobalKey<_SearchScreenState> searchKey = GlobalKey<_SearchScreenState>();
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -73,14 +76,25 @@ class _SearchScreenState extends State<SearchScreen> {
     return Consumer<EstablishmentProvider>(
       builder: (context, establishmentProvider, _) {
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Barra de pesquisa com filtros rápidos
-            _buildSearchBar(establishmentProvider),
-            // Chips de ação rápida e ordenação
-            _buildQuickFilters(establishmentProvider),
-            // Filtros dietéticos
+            const SizedBox(height: 12),
+            // Filtros Dietéticos (Agora Horizontal e Compacto)
             _buildFilters(establishmentProvider),
-            // Mapa - ocupa toda a área
+            const SizedBox(height: 4),
+            
+            // Filtros Rápidos e Categoria
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  _buildQuickFiltersRow(establishmentProvider),
+                ],
+              ),
+            ),
+            
+            // Mapa Expandido
             Expanded(
               child: _buildMap(establishmentProvider),
             ),
@@ -90,108 +104,141 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildQuickFilters(EstablishmentProvider provider) {
-    return Consumer<LocaleProvider>(
-      builder: (context, localeProvider, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                // Chip: Abertos Agora
-                _buildQuickFilterChip(
-                  icon: Icons.access_time,
-                  label: Translations.getText(context, 'openNow'),
-                  isSelected: _showOnlyOpen,
-                  onTap: () {
-                    setState(() {
-                      _showOnlyOpen = !_showOnlyOpen;
-                    });
-                    _applyFilters(provider);
-                  },
-                ),
-                const SizedBox(width: 8),
-                // Chip: Mais Próximos
-                _buildQuickFilterChip(
-                  icon: Icons.near_me,
-                  label: Translations.getText(context, 'nearby'),
-                  isSelected: _showOnlyNearby,
-                  onTap: () {
-                    setState(() {
-                      _showOnlyNearby = !_showOnlyNearby;
-                    });
-                    _applyFilters(provider);
-                  },
-                ),
-                const SizedBox(width: 8),
-                // Ordenação
-                PopupMenuButton<SortOption>(
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.sort, size: 18, color: Colors.grey.shade700),
-                      const SizedBox(width: 4),
-                      Text(
-                        _getSortLabel(context),
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
-                  onSelected: (SortOption option) {
-                    setState(() {
-                      _sortOption = option;
-                    });
-                    _applyFilters(provider);
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: SortOption.distance,
-                      child: Row(
-                        children: [
-                          Icon(Icons.near_me, size: 18),
-                          const SizedBox(width: 8),
-                          Text(Translations.getText(context, 'sortByDistance')),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: SortOption.rating,
-                      child: Row(
-                        children: [
-                          Icon(Icons.star, size: 18),
-                          const SizedBox(width: 8),
-                          Text(Translations.getText(context, 'sortByRating')),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: SortOption.name,
-                      child: Row(
-                        children: [
-                          Icon(Icons.sort_by_alpha, size: 18),
-                          const SizedBox(width: 8),
-                          Text(Translations.getText(context, 'sortByName')),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: SortOption.openFirst,
-                      child: Row(
-                        children: [
-                          Icon(Icons.access_time, size: 18),
-                          const SizedBox(width: 8),
-                          Text(Translations.getText(context, 'sortByOpenFirst')),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+  // Helper para agrupar os filtros rápidos numa linha só
+  Widget _buildQuickFiltersRow(EstablishmentProvider provider) {
+     // Combinação de atalhos de categoria e filtros rápidos para economizar espaço
+     return Row(
+       children: [
+         // Abertos e Próximos
+         _buildQuickFilterChip(
+            icon: Icons.access_time,
+            label: Translations.getText(context, 'openNow'),
+            isSelected: _showOnlyOpen,
+            onTap: () {
+              setState(() => _showOnlyOpen = !_showOnlyOpen);
+              _applyFilters(provider);
+            },
+         ),
+         const SizedBox(width: 8),
+         _buildQuickFilterChip(
+            icon: Icons.near_me,
+            label: Translations.getText(context, 'nearby'),
+            isSelected: _showOnlyNearby,
+            onTap: () {
+              setState(() => _showOnlyNearby = !_showOnlyNearby);
+              _applyFilters(provider);
+            },
+         ),
+         const SizedBox(width: 8),
+         // Botão de Ordenação (Simplificado)
+         Container(
+           decoration: BoxDecoration(
+             color: Colors.grey.shade100,
+             borderRadius: BorderRadius.circular(20),
+             border: Border.all(color: Colors.grey.shade300),
+           ),
+           child: PopupMenuButton<SortOption>(
+              icon: const Icon(Icons.sort, size: 20, color: Colors.black87),
+              tooltip: 'Ordenar',
+              onSelected: (SortOption option) {
+                setState(() => _sortOption = option);
+                _applyFilters(provider);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(value: SortOption.distance, child: Text(Translations.getText(context, 'sortByDistance'))),
+                PopupMenuItem(value: SortOption.rating, child: Text(Translations.getText(context, 'sortByRating'))),
               ],
+           ),
+         ),
+       ],
+     );
+  }
+
+  IconData _getDietaryIcon(DietaryFilter filter) {
+    final name = filter.name.toLowerCase();
+    if (name.contains('gluten')) return Icons.grain;
+    if (name.contains('lactose') || name.contains('aplv')) return Icons.water_drop;
+    if (name.contains('vegan')) return Icons.spa;
+    if (name.contains('vegetarian')) return Icons.eco;
+    if (name.contains('seafood') || name.contains('fish')) return Icons.set_meal;
+    if (name.contains('sugar')) return Icons.cookie_outlined;
+    if (name.contains('egg')) return Icons.egg_outlined; // Check if available, else Icons.circle_outlined
+    return Icons.no_food;
+  }
+
+  Widget _buildFilters(EstablishmentProvider provider) {
+    return SizedBox(
+      height: 124,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: DietaryFilter.values.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        itemBuilder: (context, index) {
+          final filter = DietaryFilter.values[index];
+          final isSelected = provider.selectedFilters.contains(filter);
+          
+          return GestureDetector(
+            onTap: () {
+              provider.toggleFilter(filter);
+            },
+            child: SizedBox(
+              width: 80,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primaryGreen : Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade200,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        if (isSelected)
+                          BoxShadow(
+                            color: AppTheme.primaryGreen.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          )
+                        else
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _getDietaryIcon(filter),
+                        color: isSelected ? Colors.white : AppTheme.primaryGreen,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    filter.getLabel(context),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -229,7 +276,6 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _applyFilters(EstablishmentProvider provider) {
-    // Método chamado quando filtros mudam, mas a ordenação é feita no _buildMap
     setState(() {});
   }
 
@@ -240,20 +286,16 @@ class _SearchScreenState extends State<SearchScreen> {
     
     List<Establishment> establishments = provider.filteredEstablishments;
     
-    // Filtrar estabelecimentos Premium (acesso antecipado)
     establishments = establishments.where((establishment) {
-      // Se o estabelecimento tem premiumUntil e ainda não expirou
       if (establishment.premiumUntil != null) {
         final now = DateTime.now();
         if (now.isBefore(establishment.premiumUntil!)) {
-          // Estabelecimento ainda é exclusivo para Premium
-          return isPremium; // Só mostrar se o usuário é Premium
+          return isPremium;
         }
       }
-      return true; // Mostrar para todos se não for exclusivo ou já expirou
+      return true;
     }).toList();
     
-    // Aplicar filtros adicionais
     if (_showOnlyOpen) {
       establishments = establishments.where((e) => e.isOpen).toList();
     }
@@ -262,13 +304,11 @@ class _SearchScreenState extends State<SearchScreen> {
       establishments = establishments.where((e) => e.distance <= _maxDistance).toList();
     }
     
-    // Ordenar
     switch (_sortOption) {
       case SortOption.distance:
         establishments.sort((a, b) => a.distance.compareTo(b.distance));
         break;
       case SortOption.rating:
-        // TODO: Implementar quando tiver avaliações
         establishments.sort((a, b) => a.name.compareTo(b.name));
         break;
       case SortOption.name:
@@ -286,84 +326,9 @@ class _SearchScreenState extends State<SearchScreen> {
     return establishments;
   }
 
-  Widget _buildSearchBar(EstablishmentProvider provider) {
-    return Consumer<LocaleProvider>(
-      builder: (context, localeProvider, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                    hintText: Translations.getText(context, 'searchHint'),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.grey),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    suffixIcon: _hasSearchText
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 20),
-                            onPressed: () {
-                              _searchController.clear();
-                              provider.setSearchQuery('');
-                            },
-                          )
-                        : _searchHistory.isNotEmpty
-                            ? PopupMenuButton<String>(
-                                icon: const Icon(Icons.history, size: 20),
-                                onSelected: (value) {
-                                  _searchController.text = value;
-                                  provider.setSearchQuery(value);
-                                },
-                                itemBuilder: (context) => _searchHistory.map((item) {
-                                  return PopupMenuItem(
-                                    value: item,
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.history, size: 16),
-                                        const SizedBox(width: 8),
-                                        Expanded(child: Text(item)),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              )
-                            : null,
-                  ),
-                  onChanged: (value) {
-                    provider.setSearchQuery(value);
-                    if (value.isNotEmpty) {
-                      _saveToHistory(value);
-                    }
-                  },
-                  onSubmitted: (value) {
-                    provider.setSearchQuery(value);
-                    _saveToHistory(value);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Botão de filtros avançados
-              IconButton(
-                icon: const Icon(Icons.tune),
-                onPressed: () => _showAdvancedFilters(context, provider),
-                tooltip: Translations.getText(context, 'advancedFilters'),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.green.shade50,
-                  foregroundColor: Colors.green.shade700,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void openAdvancedFiltersFromHeader() {
+    final provider = Provider.of<EstablishmentProvider>(context, listen: false);
+    _showAdvancedFilters(context, provider);
   }
 
   void _showAdvancedFilters(BuildContext context, EstablishmentProvider provider) {
@@ -372,7 +337,6 @@ class _SearchScreenState extends State<SearchScreen> {
     final isPremium = user?.isPremiumActive ?? false;
 
     if (!isPremium) {
-      // Mostrar dialog para Premium
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -431,29 +395,6 @@ class _SearchScreenState extends State<SearchScreen> {
         },
         provider: provider,
       ),
-    );
-  }
-
-  Widget _buildFilters(EstablishmentProvider provider) {
-    return Consumer<EstablishmentProvider>(
-      builder: (context, provider, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: DietaryFilter.values.map((filter) {
-              return DietaryFilterChip(
-                filter: filter,
-                isSelected: provider.selectedFilters.contains(filter),
-                onTap: () {
-                  provider.toggleFilter(filter);
-                },
-              );
-            }).toList(),
-          ),
-        );
-      },
     );
   }
 
@@ -720,7 +661,16 @@ class _AdvancedFiltersSheetState extends State<_AdvancedFiltersSheet> {
   }
 
   Widget _buildCategoryFilters() {
-    final categories = ['Restaurante', 'Padaria', 'Hotel', 'Lanchonete', 'Café', 'Mercado'];
+    final categories = [
+      'Restaurante',
+      'Padaria',
+      'Confeitaria',
+      'Hotel',
+      'Pousada',
+      'Lanchonete',
+      'Café',
+      'Mercado',
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

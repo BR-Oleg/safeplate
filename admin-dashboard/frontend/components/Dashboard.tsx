@@ -9,6 +9,8 @@ import LicensesPanel from './LicensesPanel'
 import StatsPanel from './StatsPanel'
 import CouponsPanel from './CouponsPanel'
 import CampaignsPanel from './CampaignsPanel'
+import CertificationRequestsPanel from './CertificationRequestsPanel'
+import ReferralRequestsPanel from './ReferralRequestsPanel'
 import Button from './ui/Button'
 import Badge from './ui/Badge'
 
@@ -21,9 +23,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
   const [maintenanceStatus, setMaintenanceStatus] = useState({ enabled: false, message: '' })
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [userInfo, setUserInfo] = useState({ email: 'admin@pratoseguro.com' })
+  const [seasonalTheme, setSeasonalTheme] = useState<'none' | 'christmas' | 'carnival'>('none')
+  const [seasonalThemeLoading, setSeasonalThemeLoading] = useState(false)
+  const [seasonalThemeSaving, setSeasonalThemeSaving] = useState(false)
 
   useEffect(() => {
     loadMaintenanceStatus()
+    loadSeasonalTheme()
   }, [])
 
   const loadMaintenanceStatus = async () => {
@@ -32,6 +38,52 @@ export default function Dashboard({ onLogout }: DashboardProps) {
       setMaintenanceStatus(response.data)
     } catch (error) {
       console.error('Erro ao carregar status de manutenção:', error)
+    }
+  }
+
+  const loadSeasonalTheme = async () => {
+    try {
+      setSeasonalThemeLoading(true)
+      const token = localStorage.getItem('adminToken')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const response = await axios.get(`${apiUrl}/api/app-config/seasonal-theme`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const value = (response.data?.seasonalTheme || 'none') as string
+      if (value === 'christmas' || value === 'carnival' || value === 'none') {
+        setSeasonalTheme(value as 'none' | 'christmas' | 'carnival')
+      } else {
+        setSeasonalTheme('none')
+      }
+    } catch (error) {
+      console.error('Erro ao carregar tema sazonal:', error)
+    } finally {
+      setSeasonalThemeLoading(false)
+    }
+  }
+
+  const handleSaveSeasonalTheme = async () => {
+    try {
+      setSeasonalThemeSaving(true)
+      const token = localStorage.getItem('adminToken')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      await axios.post(
+        `${apiUrl}/api/app-config/seasonal-theme`,
+        { seasonalTheme: seasonalTheme === 'none' ? null : seasonalTheme },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      alert('Tema sazonal atualizado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao salvar tema sazonal:', error)
+      alert(`Erro ao salvar tema sazonal: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setSeasonalThemeSaving(false)
     }
   }
 
@@ -44,6 +96,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     { id: 'stats', label: 'Dashboard', icon: '📊', description: 'Visão geral' },
     { id: 'users', label: 'Usuários', icon: '👥', description: 'Gerenciar usuários' },
     { id: 'establishments', label: 'Estabelecimentos', icon: '🏢', description: 'Gerenciar estabelecimentos' },
+    { id: 'certRequests', label: 'Certificações', icon: '🛡️', description: 'Solicitações de certificação técnica' },
+    { id: 'referrals', label: 'Indicações', icon: '📍', description: 'Indicações de novos locais' },
     { id: 'coupons', label: 'Cupons', icon: '🎫', description: 'Gerenciar cupons e recompensas' },
     { id: 'campaigns', label: 'Campanhas', icon: '🎯', description: 'Campanhas sazonais' },
     { id: 'licenses', label: 'Licenças', icon: '💳', description: 'Faturamento e licenças' },
@@ -182,6 +236,28 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Seasonal Theme Selector */}
+              <div className="hidden md:flex items-center gap-2 mr-2">
+                <span className="text-xs text-gray-500">Tema sazonal:</span>
+                <select
+                  value={seasonalTheme}
+                  onChange={(e) => setSeasonalTheme(e.target.value as 'none' | 'christmas' | 'carnival')}
+                  disabled={seasonalThemeLoading || seasonalThemeSaving}
+                  className="text-xs border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="none">Nenhum</option>
+                  <option value="christmas">Natal / Christmas</option>
+                  <option value="carnival">Carnaval</option>
+                </select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveSeasonalTheme}
+                  disabled={seasonalThemeLoading || seasonalThemeSaving}
+                >
+                  {seasonalThemeSaving ? 'Salvando...' : 'Aplicar'}
+                </Button>
+              </div>
               {/* Notifications */}
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,6 +283,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
             {activeTab === 'maintenance' && <MaintenancePanel onUpdate={loadMaintenanceStatus} />}
             {activeTab === 'users' && <UsersPanel />}
             {activeTab === 'establishments' && <EstablishmentsPanel />}
+            {activeTab === 'certRequests' && <CertificationRequestsPanel />}
+            {activeTab === 'referrals' && <ReferralRequestsPanel />}
             {activeTab === 'coupons' && <CouponsPanel />}
             {activeTab === 'campaigns' && <CampaignsPanel />}
             {activeTab === 'licenses' && <LicensesPanel />}

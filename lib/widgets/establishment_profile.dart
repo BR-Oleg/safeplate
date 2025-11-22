@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 import '../models/establishment.dart';
 import '../models/user.dart';
 import '../services/favorites_service.dart';
@@ -68,6 +69,11 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
         _isFavorite = isFav;
       });
     }
+  }
+
+  int _getEstimatedWalkingMinutes(double distanceKm) {
+    final minutes = (distanceKm / 4.0 * 60).round();
+    return minutes < 1 ? 1 : minutes;
   }
 
   Future<void> _toggleFavorite() async {
@@ -329,21 +335,51 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // Tag de dificuldade
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: establishment.difficultyLevel.color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        establishment.difficultyLevel.getLabel(context),
-                        style: TextStyle(
-                          color: establishment.difficultyLevel.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                    // Tag de dificuldade e selo de certificação (se houver)
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: establishment.difficultyLevel.color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            establishment.difficultyLevel.getLabel(context),
+                            style: TextStyle(
+                              color: establishment.difficultyLevel.color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                        if (establishment.certificationStatus == TechnicalCertificationStatus.certified) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.green.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.verified, size: 16, color: Colors.green),
+                                const SizedBox(width: 4),
+                                Text(
+                                  Translations.getText(context, 'certifiedPlaceBadge'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -377,6 +413,24 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.directions_walk,
+                size: 16,
+                color: Colors.grey.shade600,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${Translations.getText(context, 'estimatedWalkingTime')} ~${_getEstimatedWalkingMinutes(establishment.distance)} min',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
           
           const SizedBox(height: 24),
           
@@ -402,6 +456,29 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
                 );
               }).toList(),
             ),
+            if (establishment.dietaryOptions.contains(DietaryFilter.halal)) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      Translations.getText(context, 'dietaryHalalExplanation'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 24),
           ],
           
@@ -430,7 +507,95 @@ class _EstablishmentProfileState extends State<EstablishmentProfile> {
             ],
           ),
           
-          const SizedBox(height: 24),
+          if (establishment.certificationStatus != TechnicalCertificationStatus.none ||
+              establishment.lastInspectionDate != null) ...[
+            const SizedBox(height: 16),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.shade200),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          color: Colors.green.shade700,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          Translations.getText(context, 'trustSafetyTitle'),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (establishment.certificationStatus ==
+                        TechnicalCertificationStatus.certified)
+                      Text(
+                        Translations.getText(
+                          context,
+                          'trustCertificationCertified',
+                        ),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade800,
+                        ),
+                      )
+                    else if (establishment.certificationStatus ==
+                            TechnicalCertificationStatus.pending ||
+                        establishment.certificationStatus ==
+                            TechnicalCertificationStatus.scheduled)
+                      Text(
+                        Translations.getText(
+                          context,
+                          'trustCertificationInProgress',
+                        ),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade800,
+                        ),
+                      )
+                    else
+                      Text(
+                        Translations.getText(
+                          context,
+                          'trustCertificationNone',
+                        ),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    if (establishment.lastInspectionDate != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${Translations.getText(context, 'lastInspectionLabel')}: '
+                        '${DateFormat('dd/MM/yyyy').format(establishment.lastInspectionDate!)}'
+                        '${establishment.lastInspectionStatus != null && establishment.lastInspectionStatus!.isNotEmpty ? ' – ${establishment.lastInspectionStatus}' : ''}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ] else ...[
+            const SizedBox(height: 24),
+          ],
           
           // Botões de ação
           Row(

@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/establishment.dart';
 import '../services/mapbox_service.dart';
+import '../services/notification_service.dart';
 import '../utils/translations.dart';
 
 class MapboxMapWidget extends StatefulWidget {
@@ -36,13 +40,18 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
   final Map<String, Establishment> _markerIdToEstablishment = {};
   // Lista de círculos de estabelecimentos para poder deletá-los depois
   final List<CircleAnnotation> _establishmentCircles = [];
+  Establishment? _nearbyEstablishment;
+  double? _nearbyDistanceKm;
+  DateTime? _lastProximityNotificationAt;
+  String? _lastProximityNotificationEstablishmentId;
+  Set<DietaryFilter>? _preferredDietaryFilters;
 
   @override
   void initState() {
     super.initState();
     MapboxService.initialize();
-    _getUserLocation();
-    _startLocationUpdates();
+    _initLocation();
+    _loadPreferredDietaryFilters();
   }
 
   @override
@@ -50,6 +59,22 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
     _positionStream?.cancel();
     _markerIdToEstablishment.clear();
     super.dispose();
+  }
+
+  Future<void> _initLocation() async {
+    // Primeiro, tentar obter a posição atual (isso já cuida de pedir permissão)
+    await _getUserLocation();
+
+    if (!mounted) return;
+
+    // Só iniciar o stream contínuo se a permissão tiver sido realmente concedida
+    final permission = await geo.Geolocator.checkPermission();
+    if (permission == geo.LocationPermission.always ||
+        permission == geo.LocationPermission.whileInUse) {
+      _startLocationUpdates();
+    } else {
+      debugPrint('⚠️ Permissão de localização não concedida, não iniciando stream contínuo');
+    }
   }
   
   @override
@@ -99,10 +124,40 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
         if (_isMapReady && mapboxMap != null && circleAnnotationManager != null) {
           _updateUserMarker();
         }
+        _checkNearbyEstablishments();
       }
     }, onError: (error) {
       debugPrint('Erro ao obter posição: $error');
     });
+  }
+
+  Future<void> _loadPreferredDietaryFilters() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString('user');
+      if (userJson == null) return;
+
+      final data = json.decode(userJson) as Map<String, dynamic>;
+      final raw = data['dietaryPreferences'];
+      if (raw is List) {
+        final filters = raw
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .map(DietaryFilter.fromString)
+            .toSet();
+        if (filters.isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _preferredDietaryFilters = filters;
+            });
+          } else {
+            _preferredDietaryFilters = filters;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar preferências dietéticas no mapa: $e');
+    }
   }
 
   void _onMapCreated(MapboxMap mapboxMap) async {
@@ -133,6 +188,7 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
       if (_userPosition != null) {
         debugPrint('👤 Adicionando círculo azul inicial do usuário');
         await _updateUserMarker();
+        _checkNearbyEstablishments();
       }
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao inicializar Mapbox: $e');
@@ -538,6 +594,224 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
     }
   }
 
+  void _checkNearbyEstablishments() {
+    if (_userPosition == null || widget.establishments.isEmpty) {
+      if (_nearbyEstablishment != null || _nearbyDistanceKm != null) {
+        setState(() {
+          _nearbyEstablishment = null;
+          _nearbyDistanceKm = null;
+        });
+      }
+      return;
+    }
+
+    Establishment? nearest;
+    double nearestDistance = double.infinity;
+
+    final preferredFilters = _preferredDietaryFilters;
+
+    for (final establishment in widget.establishments) {
+      if (preferredFilters != null && preferredFilters.isNotEmpty) {
+        final options = establishment.dietaryOptions.toSet();
+        if (!options.containsAll(preferredFilters)) {
+          continue;
+        }
+      }
+      try {
+        final distanceKm = MapboxService.calculateDistance(
+          _userPosition!.latitude,
+          _userPosition!.longitude,
+          establishment.latitude,
+          establishment.longitude,
+        );
+        if (distanceKm < nearestDistance) {
+          nearestDistance = distanceKm;
+          nearest = establishment;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erro ao calcular distância para alerta de proximidade: $e');
+      }
+    }
+
+    const double radiusKm = 0.3; // ~300 metros
+
+    if (nearest != null && nearestDistance <= radiusKm) {
+      if (_nearbyEstablishment?.id != nearest.id ||
+          (_nearbyDistanceKm ?? double.infinity) != nearestDistance) {
+        setState(() {
+          _nearbyEstablishment = nearest;
+          _nearbyDistanceKm = nearestDistance;
+        });
+      }
+
+      final now = DateTime.now();
+      bool canNotify = false;
+      if (_lastProximityNotificationAt == null) {
+        canNotify = true;
+      } else {
+        final diff = now.difference(_lastProximityNotificationAt!);
+        if (nearest.id != _lastProximityNotificationEstablishmentId &&
+            diff.inMinutes >= 2) {
+          canNotify = true;
+        } else if (nearest.id == _lastProximityNotificationEstablishmentId &&
+            diff.inMinutes >= 10) {
+          canNotify = true;
+        }
+      }
+
+      if (canNotify) {
+        _lastProximityNotificationAt = now;
+        _lastProximityNotificationEstablishmentId = nearest.id;
+        final title = Translations.getText(context, 'nearbyAlertTitle');
+        final distanceText = nearestDistance.toStringAsFixed(1);
+        final body = '$distanceText km - ${nearest.name}';
+        NotificationService.showLocalNotificationAndSave(
+          id: 1001,
+          title: title,
+          body: body,
+          type: 'nearby_safe_place',
+        );
+      }
+    } else {
+      if (_nearbyEstablishment != null || _nearbyDistanceKm != null) {
+        setState(() {
+          _nearbyEstablishment = null;
+          _nearbyDistanceKm = null;
+        });
+      }
+    }
+  }
+
+  Widget _buildNearbyBanner(BuildContext context) {
+    if (_nearbyEstablishment == null) return const SizedBox.shrink();
+
+    final establishment = _nearbyEstablishment!;
+    final distanceKm = _nearbyDistanceKm ?? establishment.distance;
+    int walkingMinutes = (distanceKm / 4.0 * 60).round();
+    if (walkingMinutes < 1) walkingMinutes = 1;
+
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.notifications_active,
+              color: Colors.green.shade700,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    Translations.getText(context, 'nearbyAlertTitle'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${establishment.name} · ${distanceKm.toStringAsFixed(1)} km',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${Translations.getText(context, 'estimatedWalkingTime')} ~$walkingMinutes min',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () {
+                if (widget.onMarkerTap != null && _nearbyEstablishment != null) {
+                  widget.onMarkerTap!(_nearbyEstablishment!);
+                }
+              },
+              child: Text(
+                Translations.getText(context, 'nearbyAlertSeeDetails'),
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _nearbyEstablishment = null;
+                  _nearbyDistanceKm = null;
+                });
+              },
+              icon: const Icon(Icons.close, size: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRouteForEstablishment(Establishment establishment) async {
+    try {
+      final lat = establishment.latitude;
+      final lng = establishment.longitude;
+      final name = Uri.encodeComponent(establishment.name);
+
+      try {
+        final uri = Uri.parse('google.navigation:q=$lat,$lng');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        try {
+          final uri = Uri.parse(
+            'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+          );
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          try {
+            final uri = Uri.parse('geo:$lat,$lng?q=$lat,$lng($name)');
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${Translations.getText(context, 'errorOpeningNavigation')} $e',
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${Translations.getText(context, 'errorGeneratingRoute')} $e',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -595,8 +869,15 @@ class MapboxMapWidgetState extends State<MapboxMapWidget> {
             onMapCreated: _onMapCreated,
           ),
         ),
+        if (_nearbyEstablishment != null)
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: _buildNearbyBanner(context),
+          ),
         Positioned(
-          bottom: 20,
+          bottom: 110,
           right: 20,
           child: FloatingActionButton(
             mini: true,

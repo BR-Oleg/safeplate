@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../models/user.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import '../services/geofencing_service.dart';
 
 class EstablishmentProvider with ChangeNotifier {
   List<Establishment> _establishments = [];
@@ -71,6 +72,11 @@ class EstablishmentProvider with ChangeNotifier {
               closingTime: firestoreEstablishment.closingTime,
               openingDays: firestoreEstablishment.openingDays,
               premiumUntil: firestoreEstablishment.premiumUntil,
+              certificationStatus: firestoreEstablishment.certificationStatus,
+              lastInspectionDate: firestoreEstablishment.lastInspectionDate,
+              lastInspectionStatus: firestoreEstablishment.lastInspectionStatus,
+              isBoosted: firestoreEstablishment.isBoosted,
+              boostExpiresAt: firestoreEstablishment.boostExpiresAt,
             );
             debugPrint('🔄 Estabelecimento atualizado: ${firestoreEstablishment.name} (${firestoreEstablishment.id}) - Dificuldade: ${firestoreEstablishment.difficultyLevel}');
           } else {
@@ -85,6 +91,8 @@ class EstablishmentProvider with ChangeNotifier {
         
         _applyFilters();
         notifyListeners();
+        _requestLocation();
+        unawaited(GeofencingService.updateRegions(_establishments));
       },
       onError: (error) {
         debugPrint('❌ Erro ao escutar estabelecimentos: $error');
@@ -137,6 +145,8 @@ class EstablishmentProvider with ChangeNotifier {
     
     _applyFilters();
     notifyListeners();
+    _requestLocation();
+    unawaited(GeofencingService.updateRegions(_establishments));
   }
 
   void _initializeData() {
@@ -258,16 +268,9 @@ class EstablishmentProvider with ChangeNotifier {
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Permissão de localização negada');
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Permissão de localização negada permanentemente');
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        debugPrint('Permissão de localização não concedida (status: $permission)');
         return;
       }
 
@@ -304,6 +307,12 @@ class EstablishmentProvider with ChangeNotifier {
         openingTime: establishment.openingTime,
         closingTime: establishment.closingTime,
         openingDays: establishment.openingDays,
+        premiumUntil: establishment.premiumUntil,
+        certificationStatus: establishment.certificationStatus,
+        lastInspectionDate: establishment.lastInspectionDate,
+        lastInspectionStatus: establishment.lastInspectionStatus,
+        isBoosted: establishment.isBoosted,
+        boostExpiresAt: establishment.boostExpiresAt,
       );
     }).toList();
 
@@ -422,6 +431,30 @@ class EstablishmentProvider with ChangeNotifier {
 
       return true;
     }).toList();
+
+    // Ordenar por prioridade: impulsionados ativos primeiro, depois certificados, depois premium, depois por distância
+    final now = DateTime.now();
+    _filteredEstablishments.sort((a, b) {
+      final aBoostActive = a.isBoosted && (a.boostExpiresAt == null || a.boostExpiresAt!.isAfter(now));
+      final bBoostActive = b.isBoosted && (b.boostExpiresAt == null || b.boostExpiresAt!.isAfter(now));
+      if (aBoostActive != bBoostActive) {
+        return aBoostActive ? -1 : 1;
+      }
+
+      final aCertified = a.certificationStatus == TechnicalCertificationStatus.certified;
+      final bCertified = b.certificationStatus == TechnicalCertificationStatus.certified;
+      if (aCertified != bCertified) {
+        return aCertified ? -1 : 1;
+      }
+
+      final aPremiumActive = a.premiumUntil != null && a.premiumUntil!.isAfter(now);
+      final bPremiumActive = b.premiumUntil != null && b.premiumUntil!.isAfter(now);
+      if (aPremiumActive != bPremiumActive) {
+        return aPremiumActive ? -1 : 1;
+      }
+
+      return a.distance.compareTo(b.distance);
+    });
 
     notifyListeners();
   }

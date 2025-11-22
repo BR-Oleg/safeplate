@@ -20,6 +20,8 @@ dependencies:
   cloud_firestore: ^6.1.0
   firebase_messaging: ^16.0.4
   google_sign_in: ^7.2.0
+  flutter_facebook_auth: ^6.0.4
+  sign_in_with_apple: ^6.1.0
   
   # Mapa - Mapbox
   mapbox_maps_flutter: ^2.3.0
@@ -44,14 +46,18 @@ dependencies:
   url_launcher: ^6.2.3
   image_picker: ^1.0.7
   share_plus: ^7.2.1
+  flutter_local_notifications: ^17.2.1
+  geofencing_api: ^2.0.0
   
   # Loading e Feedback
   flutter_spinkit: ^5.2.0
+  google_fonts: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
@@ -59,4 +65,11 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
 

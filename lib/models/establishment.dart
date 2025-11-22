@@ -31,6 +31,11 @@ class Establishment {
   final String? closingTime; // Horário de fechamento (HH:mm)
   final List<int>? openingDays; // Dias da semana que está aberto (0=domingo, 1=segunda, ..., 6=sábado)
   final DateTime? premiumUntil; // Data até quando é exclusivo para Premium (null = disponível para todos)
+  final TechnicalCertificationStatus certificationStatus;
+  final DateTime? lastInspectionDate;
+  final String? lastInspectionStatus;
+  final bool isBoosted;
+  final DateTime? boostExpiresAt;
 
   Establishment({
     required this.id,
@@ -49,6 +54,11 @@ class Establishment {
     this.closingTime,
     this.openingDays,
     this.premiumUntil,
+    this.certificationStatus = TechnicalCertificationStatus.none,
+    this.lastInspectionDate,
+    this.lastInspectionStatus,
+    this.isBoosted = false,
+    this.boostExpiresAt,
   }) : _isOpen = isOpen;
 
   factory Establishment.fromJson(Map<String, dynamic> json) {
@@ -64,6 +74,14 @@ class Establishment {
         openingDays,
       );
     }
+    final lastInspectionDate = json['lastInspectionDate'] != null
+        ? DateTime.parse(json['lastInspectionDate'] as String)
+        : null;
+    final lastInspectionStatus = json['lastInspectionStatus'] as String?;
+    final isBoosted = json['isBoosted'] as bool? ?? false;
+    final boostExpiresAt = json['boostExpiresAt'] != null
+        ? DateTime.parse(json['boostExpiresAt'] as String)
+        : null;
     
     return Establishment(
       id: json['id'] as String,
@@ -87,6 +105,13 @@ class Establishment {
       premiumUntil: json['premiumUntil'] != null
           ? DateTime.parse(json['premiumUntil'] as String)
           : null,
+      certificationStatus: TechnicalCertificationStatus.fromString(
+        json['certificationStatus'] as String? ?? 'none',
+      ),
+      lastInspectionDate: lastInspectionDate,
+      lastInspectionStatus: lastInspectionStatus,
+      isBoosted: isBoosted,
+      boostExpiresAt: boostExpiresAt,
     );
   }
   
@@ -171,6 +196,11 @@ class Establishment {
       'closingTime': closingTime,
       'openingDays': openingDays,
       'premiumUntil': premiumUntil?.toIso8601String(),
+      'certificationStatus': certificationStatus.toString().split('.').last,
+      'lastInspectionDate': lastInspectionDate?.toIso8601String(),
+      'lastInspectionStatus': lastInspectionStatus,
+      'isBoosted': isBoosted,
+      'boostExpiresAt': boostExpiresAt?.toIso8601String(),
     };
   }
 }
@@ -238,6 +268,46 @@ enum DifficultyLevel {
   }
 }
 
+enum TechnicalCertificationStatus {
+  none,
+  pending,
+  scheduled,
+  certified;
+
+  String getLabel(BuildContext? context) {
+    if (context == null) {
+      switch (this) {
+        case TechnicalCertificationStatus.none:
+          return 'Sem certificação';
+        case TechnicalCertificationStatus.pending:
+          return 'Solicitada (pendente)';
+        case TechnicalCertificationStatus.scheduled:
+          return 'Agendada';
+        case TechnicalCertificationStatus.certified:
+          return 'Certificado';
+      }
+    }
+
+    switch (this) {
+      case TechnicalCertificationStatus.none:
+        return Translations.getText(context!, 'certificationStatusNone');
+      case TechnicalCertificationStatus.pending:
+        return Translations.getText(context!, 'certificationStatusPending');
+      case TechnicalCertificationStatus.scheduled:
+        return Translations.getText(context!, 'certificationStatusScheduled');
+      case TechnicalCertificationStatus.certified:
+        return Translations.getText(context!, 'certificationStatusCertified');
+    }
+  }
+
+  static TechnicalCertificationStatus fromString(String value) {
+    return TechnicalCertificationStatus.values.firstWhere(
+      (e) => e.toString().split('.').last == value,
+      orElse: () => TechnicalCertificationStatus.none,
+    );
+  }
+}
+
 /// Helper para traduzir categorias de estabelecimentos
 class CategoryTranslator {
   static String translate(BuildContext? context, String category) {
@@ -260,14 +330,19 @@ class CategoryTranslator {
              categoryLower == 'padaria' || 
              categoryLower == 'panadería' ||
              categoryLower == 'panaderia' ||
+             categoryLower == 'confeitaria' ||
              categoryLower.contains('bakery') || 
              categoryLower.contains('padaria') || 
              categoryLower.contains('panadería') ||
-             categoryLower.contains('panaderia')) {
+             categoryLower.contains('panaderia') ||
+             categoryLower.contains('confeitaria')) {
       return Translations.getText(context, 'categoryBakery');
     } 
-    // Hotel
-    else if (categoryLower == 'hotel' || categoryLower.contains('hotel')) {
+    // Hotel / Pousada
+    else if (categoryLower == 'hotel' || 
+             categoryLower == 'pousada' || 
+             categoryLower.contains('hotel') || 
+             categoryLower.contains('pousada')) {
       return Translations.getText(context, 'categoryHotel');
     } 
     // Cafe / Café
@@ -297,8 +372,15 @@ class CategoryTranslator {
 enum DietaryFilter {
   celiac,
   lactoseFree,
+  aplv,
+  eggFree,
   nutFree,
+  oilseedFree,
+  soyFree,
+  sugarFree,
+  diabetic,
   vegan,
+  vegetarian,
   halal;
 
   String getLabel(BuildContext? context) {
@@ -309,10 +391,24 @@ enum DietaryFilter {
           return 'Celíaco';
         case DietaryFilter.lactoseFree:
           return 'Sem Lactose';
+        case DietaryFilter.aplv:
+          return 'APLV';
+        case DietaryFilter.eggFree:
+          return 'Sem Ovo';
         case DietaryFilter.nutFree:
           return 'Sem Amendoim';
+        case DietaryFilter.oilseedFree:
+          return 'Sem Oleaginosas';
+        case DietaryFilter.soyFree:
+          return 'Sem Soja';
+        case DietaryFilter.sugarFree:
+          return 'Sem Açúcar';
+        case DietaryFilter.diabetic:
+          return 'Adequado para diabéticos';
         case DietaryFilter.vegan:
           return 'Vegano';
+        case DietaryFilter.vegetarian:
+          return 'Vegetariano';
         case DietaryFilter.halal:
           return 'Halal';
       }
@@ -324,10 +420,24 @@ enum DietaryFilter {
         return Translations.getText(context, 'dietaryCeliac');
       case DietaryFilter.lactoseFree:
         return Translations.getText(context, 'dietaryLactoseFree');
+      case DietaryFilter.aplv:
+        return Translations.getText(context, 'dietaryAPLV');
+      case DietaryFilter.eggFree:
+        return Translations.getText(context, 'dietaryEggFree');
       case DietaryFilter.nutFree:
         return Translations.getText(context, 'dietaryNutFree');
+      case DietaryFilter.oilseedFree:
+        return Translations.getText(context, 'dietaryOilseedFree');
+      case DietaryFilter.soyFree:
+        return Translations.getText(context, 'dietarySoyFree');
+      case DietaryFilter.sugarFree:
+        return Translations.getText(context, 'dietarySugarFree');
+      case DietaryFilter.diabetic:
+        return Translations.getText(context, 'dietaryDiabetic');
       case DietaryFilter.vegan:
         return Translations.getText(context, 'dietaryVegan');
+      case DietaryFilter.vegetarian:
+        return Translations.getText(context, 'dietaryVegetarian');
       case DietaryFilter.halal:
         return Translations.getText(context, 'dietaryHalal');
     }
@@ -340,10 +450,24 @@ enum DietaryFilter {
         return 'Celíaco';
       case DietaryFilter.lactoseFree:
         return 'Sem Lactose';
+      case DietaryFilter.aplv:
+        return 'APLV';
+      case DietaryFilter.eggFree:
+        return 'Sem Ovo';
       case DietaryFilter.nutFree:
         return 'Sem Amendoim';
+      case DietaryFilter.oilseedFree:
+        return 'Sem Oleaginosas';
+      case DietaryFilter.soyFree:
+        return 'Sem Soja';
+      case DietaryFilter.sugarFree:
+        return 'Sem Açúcar';
+      case DietaryFilter.diabetic:
+        return 'Adequado para diabéticos';
       case DietaryFilter.vegan:
         return 'Vegano';
+      case DietaryFilter.vegetarian:
+        return 'Vegetariano';
       case DietaryFilter.halal:
         return 'Halal';
     }

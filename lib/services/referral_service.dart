@@ -42,12 +42,7 @@ class ReferralService {
 
       await _firestore.collection('referrals').add(referral);
 
-      // Adicionar pontos e atualizar estatísticas
-      await GamificationService.addPoints(userId, GamificationService.getPointsForAction('referral'), 'Indicação de novo local');
-      await FirebaseService.updateUserStats(userId, referralsIncrement: 1);
-      await GamificationService.updateUserSeal(userId);
-
-      debugPrint('✅ Indicação registrada: ${establishment.name}');
+      debugPrint('✅ Indicação registrada (aguardando aprovação): ${establishment.name}');
       return true;
     } catch (e) {
       debugPrint('❌ Erro ao indicar estabelecimento: $e');

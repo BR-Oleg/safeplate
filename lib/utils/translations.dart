@@ -15,6 +15,10 @@ class Translations {
         return languageCode == 'pt' ? 'Próximos' : languageCode == 'es' ? 'Cercanos' : 'Nearby';
       case 'openNow':
         return languageCode == 'pt' ? 'Abertos' : languageCode == 'es' ? 'Abiertos' : 'Open Now';
+      case 'achievements':
+        return languageCode == 'pt' ? 'Conquistas' : languageCode == 'es' ? 'Logros' : 'Achievements';
+      case 'about':
+        return languageCode == 'pt' ? 'Sobre' : languageCode == 'es' ? 'Acerca de' : 'About';
       
       // Menu
       case 'favorites':
@@ -59,6 +63,18 @@ class Translations {
         return languageCode == 'pt' ? 'Vegano' : languageCode == 'es' ? 'Vegano' : 'Vegan';
       case 'dietaryHalal':
         return 'Halal'; // Mesmo em todos os idiomas
+      case 'dietaryAPLV':
+        return languageCode == 'pt' ? 'APLV' : languageCode == 'es' ? 'APLV' : 'CMPA';
+      case 'dietaryEggFree':
+        return languageCode == 'pt' ? 'Sem Ovo' : languageCode == 'es' ? 'Sin Huevo' : 'Egg Free';
+      case 'dietarySoyFree':
+        return languageCode == 'pt' ? 'Sem Soja' : languageCode == 'es' ? 'Sin Soja' : 'Soy Free';
+      case 'dietarySugarFree':
+        return languageCode == 'pt' ? 'Sem Açúcar' : languageCode == 'es' ? 'Sin Azúcar' : 'Sugar Free';
+      case 'dietaryVegetarian':
+        return languageCode == 'pt' ? 'Vegetariano' : languageCode == 'es' ? 'Vegetariano' : 'Vegetarian';
+      case 'dietaryOilseedFree':
+        return languageCode == 'pt' ? 'Sem Oleaginosas' : languageCode == 'es' ? 'Sin Frutos Secos y Semillas Oleaginosas' : 'Oilseed Free';
       
       // Dialog
       case 'generateRoute':
@@ -117,6 +133,24 @@ class Translations {
         return languageCode == 'pt' ? 'Fechado' : languageCode == 'es' ? 'Cerrado' : 'Closed';
       case 'goToLocation':
         return languageCode == 'pt' ? 'Ir até o local' : languageCode == 'es' ? 'Ir al lugar' : 'Go to location';
+      case 'nearbyAlertTitle':
+        return languageCode == 'pt'
+            ? 'Você está perto de um lugar seguro!'
+            : languageCode == 'es'
+                ? 'Estás cerca de un lugar seguro.'
+                : 'You are near a safe place!';
+      case 'nearbyAlertSeeDetails':
+        return languageCode == 'pt'
+            ? 'Ver detalhes'
+            : languageCode == 'es'
+                ? 'Ver detalles'
+                : 'See details';
+      case 'estimatedWalkingTime':
+        return languageCode == 'pt'
+            ? 'Tempo estimado a pé:'
+            : languageCode == 'es'
+                ? 'Tiempo estimado a pie:'
+                : 'Estimated walking time:';
       case 'reviews':
         return languageCode == 'pt' ? 'Avaliações' : languageCode == 'es' ? 'Reseñas' : 'Reviews';
       case 'noReviewsYet':
@@ -225,7 +259,140 @@ class Translations {
         return languageCode == 'pt' ? 'Total de Avaliações' : languageCode == 'es' ? 'Total de Reseñas' : 'Total Reviews';
       case 'noReviews':
         return languageCode == 'pt' ? 'Nenhuma avaliação ainda' : languageCode == 'es' ? 'Aún no hay reseñas' : 'No reviews yet';
-      
+      case 'businessInstitutionalPitchTitle':
+        return languageCode == 'pt'
+            ? 'Por que anunciar no Prato Seguro?'
+            : languageCode == 'es'
+                ? '¿Por qué anunciar en Prato Seguro?'
+                : 'Why advertise on Prato Seguro?';
+      case 'businessInstitutionalPitchDescription':
+        return languageCode == 'pt'
+            ? 'Anúncio gratuito para todas as empresas e planos pagos com mais visibilidade, fotos em destaque e posição de topo.'
+            : languageCode == 'es'
+                ? 'Anuncio gratuito para todas las empresas y planes de pago con más visibilidad, fotos destacadas y posición superior.'
+                : 'Free listing for all businesses and paid plans with more visibility, featured photos and top position.';
+      case 'businessPlans':
+        return languageCode == 'pt'
+            ? 'Planos para Empresas'
+            : languageCode == 'es'
+                ? 'Planes para Empresas'
+                : 'Business Plans';
+      case 'basicPlan':
+        return languageCode == 'pt' ? 'Básico' : languageCode == 'es' ? 'Básico' : 'Basic';
+      case 'intermediatePlan':
+        return languageCode == 'pt' ? 'Intermediário' : languageCode == 'es' ? 'Intermedio' : 'Intermediate';
+      case 'goldPlan':
+        return 'Gold';
+      case 'talkOnWhatsApp':
+        return languageCode == 'pt' ? 'Falar no WhatsApp' : languageCode == 'es' ? 'Hablar por WhatsApp' : 'Talk on WhatsApp';
+      case 'whatsAppContactForPlans':
+        return languageCode == 'pt'
+            ? 'Fale com nossa equipe pelo WhatsApp para aderir a um plano ou tirar dúvidas.'
+            : languageCode == 'es'
+                ? 'Habla con nuestro equipo por WhatsApp para adherirte a un plan o aclarar dudas.'
+                : 'Talk to our team on WhatsApp to join a plan or ask questions.';
+      case 'iWantToParticipate':
+        return languageCode == 'pt'
+            ? 'Quero fazer parte'
+            : languageCode == 'es'
+                ? 'Quiero participar'
+                : 'I want to join';
+      case 'technicalCertification':
+        return languageCode == 'pt'
+            ? 'Certificação Técnica'
+            : languageCode == 'es'
+                ? 'Certificación Técnica'
+                : 'Technical Certification';
+      case 'technicalCertificationDescription':
+        return languageCode == 'pt'
+            ? 'Receba o selo de certificação técnica Prato Seguro com agenda direta com nutricionista.'
+            : languageCode == 'es'
+                ? 'Recibe el sello de certificación técnica Prato Seguro con agenda directa con nutricionista.'
+                : 'Get the Prato Seguro technical certification badge with direct scheduling with a nutritionist.';
+      case 'technicalCertificationWhatsAppMessage':
+        return languageCode == 'pt'
+            ? 'Olá! Gostaria de solicitar certificação técnica para meu estabelecimento no Prato Seguro.'
+            : languageCode == 'es'
+                ? '¡Hola! Me gustaría solicitar la certificación técnica para mi establecimiento en Prato Seguro.'
+                : 'Hi! I would like to request technical certification for my business on Prato Seguro.';
+      case 'businessPlansWhatsAppMessage':
+        return languageCode == 'pt'
+            ? 'Olá! Gostaria de falar sobre os planos pagos para empresas no Prato Seguro.'
+            : languageCode == 'es'
+                ? '¡Hola! Me gustaría hablar sobre los planes pagos para empresas en Prato Seguro.'
+                : 'Hi! I would like to talk about business plans on Prato Seguro.';
+      case 'certificationStatusLabel':
+        return languageCode == 'pt'
+            ? 'Status da certificação'
+            : languageCode == 'es'
+                ? 'Estado de la certificación'
+                : 'Certification status';
+      case 'certificationStatusNone':
+        return languageCode == 'pt'
+            ? 'Sem certificação'
+            : languageCode == 'es'
+                ? 'Sin certificación'
+                : 'No certification';
+      case 'certificationStatusPending':
+        return languageCode == 'pt'
+            ? 'Solicitada (pendente)'
+            : languageCode == 'es'
+                ? 'Solicitada (pendiente)'
+                : 'Requested (pending)';
+      case 'certificationStatusScheduled':
+        return languageCode == 'pt'
+            ? 'Agendada'
+            : languageCode == 'es'
+                ? 'Agendada'
+                : 'Scheduled';
+      case 'certificationStatusCertified':
+        return languageCode == 'pt'
+            ? 'Certificado'
+            : languageCode == 'es'
+                ? 'Certificado'
+                : 'Certified';
+      case 'certifiedPlaceBadge':
+        return languageCode == 'pt'
+            ? 'Local Certificado Prato Seguro'
+            : languageCode == 'es'
+                ? 'Local Certificado Prato Seguro'
+                : 'Prato Seguro Certified Place';
+      case 'trustSafetyTitle':
+        return languageCode == 'pt'
+            ? 'Confiança e segurança alimentar'
+            : languageCode == 'es'
+                ? 'Confianza y seguridad alimentaria'
+                : 'Food safety & trust';
+      case 'trustCertificationCertified':
+        return languageCode == 'pt'
+            ? 'Este local possui certificação técnica Prato Seguro.'
+            : languageCode == 'es'
+                ? 'Este lugar cuenta con certificación técnica Prato Seguro.'
+                : 'This place has Prato Seguro technical certification.';
+      case 'trustCertificationInProgress':
+        return languageCode == 'pt'
+            ? 'Este local está em processo de certificação técnica.'
+            : languageCode == 'es'
+                ? 'Este lugar está en proceso de certificación técnica.'
+                : 'This place is in technical certification process.';
+      case 'trustCertificationNone':
+        return languageCode == 'pt'
+            ? 'Ainda sem certificação técnica formal, mas já avaliado pela comunidade.'
+            : languageCode == 'es'
+                ? 'Aún sin certificación técnica formal, pero ya evaluado por la comunidad.'
+                : 'No formal technical certification yet, but already reviewed by the community.';
+      case 'lastInspectionLabel':
+        return languageCode == 'pt'
+            ? 'Última inspeção sanitária'
+            : languageCode == 'es'
+                ? 'Última inspección sanitaria'
+                : 'Last health inspection';
+      case 'dataProtectionMessage':
+        return languageCode == 'pt'
+            ? 'Nós protegemos seus dados. Leia nossa política de privacidade.'
+            : languageCode == 'es'
+                ? 'Protegemos tus datos. Lee nuestra política de privacidad.'
+                : 'We protect your data. Read our privacy policy.';
       // Review Form
       case 'sendReview':
         return languageCode == 'pt' ? 'Enviar Avaliação' : languageCode == 'es' ? 'Enviar Reseña' : 'Send Review';
@@ -341,6 +508,18 @@ class Translations {
         return languageCode == 'pt' ? 'ou' : languageCode == 'es' ? 'o' : 'or';
       case 'continueWithGoogle':
         return languageCode == 'pt' ? 'Continuar com Google' : languageCode == 'es' ? 'Continuar con Google' : 'Continue with Google';
+      case 'continueWithFacebook':
+        return languageCode == 'pt'
+            ? 'Continuar com Facebook'
+            : languageCode == 'es'
+                ? 'Continuar con Facebook'
+                : 'Continue with Facebook';
+      case 'continueWithApple':
+        return languageCode == 'pt'
+            ? 'Continuar com Apple'
+            : languageCode == 'es'
+                ? 'Continuar con Apple'
+                : 'Continue with Apple';
       case 'dontHaveAccount':
         return languageCode == 'pt' ? 'Não tem uma conta? ' : languageCode == 'es' ? '¿No tienes una cuenta? ' : "Don't have an account? ";
       case 'signUp':
@@ -357,6 +536,84 @@ class Translations {
         return languageCode == 'pt' ? 'Erro ao fazer login. Tente novamente.' : languageCode == 'es' ? 'Error al iniciar sesión. Inténtalo de nuevo.' : 'Login error. Please try again.';
       case 'googleLoginError':
         return languageCode == 'pt' ? 'Erro ao fazer login com Google. Tente novamente.' : languageCode == 'es' ? 'Error al iniciar sesión con Google. Inténtalo de nuevo.' : 'Google login error. Please try again.';
+      case 'forgotPassword':
+        return languageCode == 'pt'
+            ? 'Esqueceu a senha?'
+            : languageCode == 'es'
+                ? '¿Olvidaste tu contraseña?'
+                : 'Forgot your password?';
+      case 'passwordResetEmailSent':
+        return languageCode == 'pt'
+            ? 'Enviamos um link de recuperação para seu email.'
+            : languageCode == 'es'
+                ? 'Hemos enviado un enlace de recuperación a tu correo.'
+                : 'We sent a password reset link to your email.';
+      case 'passwordResetEmailError':
+        return languageCode == 'pt'
+            ? 'Não foi possível enviar o email de recuperação. Tente novamente.'
+            : languageCode == 'es'
+                ? 'No fue posible enviar el correo de recuperación. Inténtalo de nuevo.'
+                : 'Could not send the recovery email. Please try again.';
+      case 'loginEnterEmail':
+        return languageCode == 'pt'
+            ? 'Por favor, informe o email.'
+            : languageCode == 'es'
+                ? 'Por favor, ingresa el correo electrónico.'
+                : 'Please enter your email.';
+      case 'loginEnterValidEmail':
+        return languageCode == 'pt'
+            ? 'Por favor, informe um email válido.'
+            : languageCode == 'es'
+                ? 'Por favor, ingresa un correo electrónico válido.'
+                : 'Please enter a valid email.';
+      case 'loginEnterPassword':
+        return languageCode == 'pt'
+            ? 'Por favor, informe a senha.'
+            : languageCode == 'es'
+                ? 'Por favor, ingresa la contraseña.'
+                : 'Please enter your password.';
+      case 'email':
+        return languageCode == 'pt'
+            ? 'Email'
+            : languageCode == 'es'
+                ? 'Email.'
+                : 'Email';
+      case 'loginEnterValidEmailForReset':
+        return languageCode == 'pt'
+            ? 'Informe um email válido para recuperar sua senha.'
+            : languageCode == 'es'
+                ? 'Ingresa un correo válido para recuperar tu contraseña.'
+                : 'Enter a valid email to recover your password.';
+      case 'socialLoginComingSoon':
+        return languageCode == 'pt'
+            ? 'Login social adicional em breve.'
+            : languageCode == 'es'
+                ? 'Inicio de sesión social adicional pronto.'
+                : 'Additional social login coming soon.';
+      case 'welcomeBack':
+        return languageCode == 'pt'
+            ? 'Bem-vindo de volta'
+            : languageCode == 'es'
+                ? 'Bienvenido de nuevo'
+                : 'Welcome back';
+      case 'profileImpactPrefix':
+        return languageCode == 'pt'
+            ? 'Você já publicou'
+            : languageCode == 'es'
+                ? 'Ya publicaste'
+                : 'You have already published';
+      case 'profileImpactSuffix':
+        return languageCode == 'pt'
+            ? 'avaliações focadas em segurança alimentar.'
+            : languageCode == 'es'
+                ? 'reseñas enfocadas en seguridad alimentaria.'
+                : 'reviews focused on food safety.';
+      case 'profileImpactEmpty':
+        return languageCode == 'pt'
+            ? 'Comece a deixar avaliações para ajudar outras pessoas a comer com segurança.'
+            : languageCode == 'es'
+                ? 'Empieza a dejar reseñas para ayudar a otras personas a comer con seguridad.'
+                : 'Start leaving reviews to help other people eat safely.';
       
       // Check-in
       case 'checkIn':
@@ -489,8 +746,254 @@ class Translations {
         return languageCode == 'pt' ? 'horas' : languageCode == 'es' ? 'horas' : 'hours';
       case 'today':
         return languageCode == 'pt' ? 'Hoje' : languageCode == 'es' ? 'Hoy' : 'Today';
-      
+      case 'onboardingTitle1':
+        return languageCode == 'pt'
+            ? 'Comer fora não precisa ser um risco.'
+            : languageCode == 'es'
+                ? 'Comer fuera no tiene por qué ser un riesgo.'
+                : 'Eating out doesn\'t have to be a risk.';
+      case 'onboardingDescription1':
+        return languageCode == 'pt'
+            ? 'O Prato Seguro conecta você a restaurantes, padarias e locais que respeitam suas restrições alimentares — com segurança, confiança e praticidade.'
+            : languageCode == 'es'
+                ? 'Prato Seguro te conecta con restaurantes, panaderías y lugares que respetan tus restricciones alimentarias, con seguridad, confianza y practicidad.'
+                : 'Prato Seguro connects you to restaurants, bakeries and places that respect your dietary restrictions — with safety, trust and convenience.';
+      case 'onboardingTitle2':
+        return languageCode == 'pt'
+            ? 'Encontre lugares seguros.'
+            : languageCode == 'es'
+                ? 'Encuentra lugares seguros.'
+                : 'Find safe places.';
+      case 'onboardingDescription2':
+        return languageCode == 'pt'
+            ? 'Encontre opções para celíacos, veganos, alérgicos e muito mais, com filtros pensados para quem vive com restrições.'
+            : languageCode == 'es'
+                ? 'Encuentra opciones para celíacos, veganos, alérgicos y mucho más, con filtros pensados para quienes viven con restricciones.'
+                : 'Find options for celiacs, vegans, people with allergies and more, with filters designed for those living with restrictions.';
+      case 'onboardingTitle3':
+        return languageCode == 'pt'
+            ? 'Descubra opções próximas.'
+            : languageCode == 'es'
+                ? 'Descubre opciones cercanas.'
+                : 'Discover nearby options.';
+      case 'onboardingDescription3':
+        return languageCode == 'pt'
+            ? 'Use o mapa, filtros inteligentes e alertas em tempo real para decidir onde comer com mais tranquilidade.'
+            : languageCode == 'es'
+                ? 'Utiliza el mapa, filtros inteligentes y alertas en tiempo real para decidir dónde comer con más tranquilidad.'
+                : 'Use the map, smart filters and real-time alerts to decide where to eat with more peace of mind.';
+      case 'onboardingTitle4':
+        return languageCode == 'pt'
+            ? 'Ganhe pontos, selos e benefícios.'
+            : languageCode == 'es'
+                ? 'Gana puntos, sellos y beneficios.'
+                : 'Earn points, badges and benefits.';
+      case 'onboardingDescription4':
+        return languageCode == 'pt'
+            ? 'Veja avaliações focadas em segurança alimentar, registre suas experiências e desbloqueie recompensas usando o app.'
+            : languageCode == 'es'
+                ? 'Mira reseñas enfocadas en seguridad alimentaria, registra tus experiencias y desbloquea recompensas usando la app.'
+                : 'See reviews focused on food safety, record your experiences and unlock rewards by using the app.';
+      case 'onboardingSkip':
+        return languageCode == 'pt' ? 'Pular' : languageCode == 'es' ? 'Omitir' : 'Skip';
+      case 'onboardingNext':
+        return languageCode == 'pt' ? 'Avançar' : languageCode == 'es' ? 'Siguiente' : 'Next';
+      case 'onboardingStart':
+        return languageCode == 'pt' ? 'Começar' : languageCode == 'es' ? 'Empezar' : 'Start';
+      case 'appSlogan':
+        return languageCode == 'pt'
+            ? 'Onde comer com confiança.'
+            : languageCode == 'es'
+                ? 'Dónde comer con confianza.'
+                : 'Where to eat with confidence.';
+      // Notifications & Leaderboard
+      case 'notifications':
+        return languageCode == 'pt' ? 'Notificações' : languageCode == 'es' ? 'Notificaciones' : 'Notifications';
+      case 'noNotificationsYet':
+        return languageCode == 'pt'
+            ? 'Você ainda não recebeu notificações.'
+            : languageCode == 'es'
+                ? 'Todavía no has recibido notificaciones.'
+                : 'You have not received any notifications yet.';
+      case 'leaderboardError':
+        return languageCode == 'pt'
+            ? 'Erro ao carregar ranking. Tente novamente.'
+            : languageCode == 'es'
+                ? 'Error al cargar el ranking. Inténtalo de nuevo.'
+                : 'Error loading leaderboard. Please try again.';
+      case 'leaderboardEmpty':
+        return languageCode == 'pt'
+            ? 'Ainda não há avaliadores suficientes para o ranking.'
+            : languageCode == 'es'
+                ? 'Todavía no hay suficientes reseñadores para el ranking.'
+                : 'There are not enough reviewers for the leaderboard yet.';
+      case 'topReviewers':
+        return languageCode == 'pt' ? 'Top Avaliadores' : languageCode == 'es' ? 'Top Reseñadores' : 'Top Reviewers';
+
+      // Followers / Following
+      case 'followers':
+        return languageCode == 'pt' ? 'seguidores' : languageCode == 'es' ? 'seguidores' : 'followers';
+      case 'following':
+        return languageCode == 'pt' ? 'seguidos' : languageCode == 'es' ? 'seguidos' : 'following';
+      case 'follow':
+        return languageCode == 'pt' ? 'Seguir' : languageCode == 'es' ? 'Seguir' : 'Follow';
+      case 'followingVerb':
+        return languageCode == 'pt' ? 'Seguindo' : languageCode == 'es' ? 'Siguiendo' : 'Following';
+      case 'noFollowersYet':
+        return languageCode == 'pt'
+            ? 'Você ainda não tem seguidores.'
+            : languageCode == 'es'
+                ? 'Todavía no tienes seguidores.'
+                : 'You do not have any followers yet.';
+      case 'noFollowingYet':
+        return languageCode == 'pt'
+            ? 'Você ainda não está seguindo ninguém.'
+            : languageCode == 'es'
+                ? 'Todavía no sigues a nadie.'
+                : 'You are not following anyone yet.';
+
+      // Diet Preferences
+      case 'dietPreferencesTitle':
+        return languageCode == 'pt' ? 'Preferências de comida segura' : languageCode == 'es' ? 'Preferencias de comida segura' : 'Safe food preferences';
+      case 'dietPreferencesEmpty':
+        return languageCode == 'pt'
+            ? 'Você ainda não definiu suas preferências. Elas ajudam a encontrar lugares que atendem às suas restrições.'
+            : languageCode == 'es'
+                ? 'Aún no definiste tus preferencias. Ayudan a encontrar lugares que respetan tus restricciones.'
+                : 'You have not set your preferences yet. They help find places that match your restrictions.';
+      case 'dietPreferencesNudge':
+        return languageCode == 'pt'
+            ? 'Defina suas preferências de comida segura para receber resultados e alertas mais relevantes.'
+            : languageCode == 'es'
+                ? 'Define tus preferencias de comida segura para recibir resultados y alertas más relevantes.'
+                : 'Set your safe food preferences to get more relevant results and alerts.';
+      case 'dietaryDiabetic':
+        return languageCode == 'pt' ? 'Adequado para diabéticos' : languageCode == 'es' ? 'Apto para personas con diabetes' : 'Suitable for people with diabetes';
+      case 'save':
+        return languageCode == 'pt' ? 'Salvar' : languageCode == 'es' ? 'Guardar' : 'Save';
+
+      // Mascot
+      case 'mascotTitleStart':
+        return languageCode == 'pt' ? 'Comece sua jornada de comida segura' : languageCode == 'es' ? 'Comienza tu jornada de comida segura' : 'Start your safe food journey';
+      case 'mascotMessageStart':
+        return languageCode == 'pt'
+            ? 'Faça seus primeiros check-ins e avaliações para o mascote entender o seu jeito de comer.'
+            : languageCode == 'es'
+                ? 'Haz tus primeros registros y reseñas para que la mascota entienda tu forma de comer.'
+                : 'Do your first check-ins and reviews so the mascot can learn your way of eating.';
+      case 'mascotTitleBronze':
+        return languageCode == 'pt' ? 'Você já está na trilha certa' : languageCode == 'es' ? 'Ya estás en el camino correcto' : 'You are already on the right track';
+      case 'mascotMessageBronze':
+        return languageCode == 'pt'
+            ? 'Com seus check-ins e avaliações, você já ajuda outras pessoas a comer com mais segurança.'
+            : languageCode == 'es'
+                ? 'Con tus registros y reseñas ya ayudas a otras personas a comer con más seguridad.'
+                : 'With your check-ins and reviews, you are already helping others eat more safely.';
+      case 'mascotTitleSilver':
+        return languageCode == 'pt' ? 'Você é referência na comunidade' : languageCode == 'es' ? 'Eres referencia en la comunidad' : 'You are a community reference';
+      case 'mascotMessageSilver':
+        return languageCode == 'pt'
+            ? 'Suas avaliações e indicações estão guiando muita gente a lugares mais seguros.'
+            : languageCode == 'es'
+                ? 'Tus reseñas e indicaciones están guiando a muchas personas a lugares más seguros.'
+                : 'Your reviews and referrals are guiding many people to safer places.';
+      case 'mascotTitleGold':
+        return languageCode == 'pt' ? 'Guardião do Prato Seguro' : languageCode == 'es' ? 'Guardián de Prato Seguro' : 'Prato Seguro guardian';
+      case 'mascotMessageGold':
+        return languageCode == 'pt'
+            ? 'Você é um dos perfis que mais protege a comunidade com avaliações focadas em segurança.'
+            : languageCode == 'es'
+                ? 'Eres uno de los perfiles que más protege a la comunidad con reseñas enfocadas en seguridad.'
+                : 'You are one of the profiles that most protects the community with safety-focused reviews.';
+      case 'mascotTitleReferralHero':
+        return languageCode == 'pt' ? 'Herói das indicações' : languageCode == 'es' ? 'Héroe de las indicaciones' : 'Referral hero';
+      case 'mascotMessageReferralHero':
+        return languageCode == 'pt'
+            ? 'Suas indicações estão abrindo novos caminhos de comida segura para a comunidade.'
+            : languageCode == 'es'
+                ? 'Tus indicaciones están abriendo nuevos caminos de comida segura para la comunidad.'
+                : 'Your referrals are opening new safe food paths for the community.';
+      case 'mascotTitleReferralChampion':
+        return languageCode == 'pt' ? 'Campeão de indicações' : languageCode == 'es' ? 'Campeón de indicaciones' : 'Referral champion';
+      case 'mascotMessageReferralChampion':
+        return languageCode == 'pt'
+            ? 'Você já indicou vários locais seguros. O mapa do Prato Seguro existe graças a pessoas como você.'
+            : languageCode == 'es'
+                ? 'Ya indicaste varios lugares seguros. El mapa de Prato Seguro existe gracias a personas como tú.'
+                : 'You have already referred several safe places. The Prato Seguro map exists thanks to people like you.';
+
+      // Badges & Misc
+      case 'communityBadgeConnector':
+        return languageCode == 'pt' ? 'Conector da comunidade' : languageCode == 'es' ? 'Conector de la comunidad' : 'Community connector';
+      case 'communityBadgeInfluencer':
+        return languageCode == 'pt' ? 'Influencer da comunidade' : languageCode == 'es' ? 'Influencer de la comunidad' : 'Community influencer';
+      case 'communityBadgeAmbassador':
+        return languageCode == 'pt' ? 'Embaixador da comunidade' : languageCode == 'es' ? 'Embajador de la comunidad' : 'Community ambassador';
+      case 'sealProgressTowards':
+        return languageCode == 'pt' ? 'de progresso para o próximo selo' : languageCode == 'es' ? 'de progreso hacia la próxima medalla' : 'progress towards the next badge';
+      case 'trailHistoryTitle':
+        return languageCode == 'pt' ? 'Últimos check-ins' : languageCode == 'es' ? 'Últimos registros' : 'Latest check-ins';
+      case 'trailHistoryEmpty':
+        return languageCode == 'pt' ? 'Este usuário ainda não registrou trilhas.' : languageCode == 'es' ? 'Este usuario aún no registró rutas.' : 'This user has not registered any trails yet.';
+
+      // WhatsApp Group
+      case 'homeWhatsAppGroupTitle':
+        return languageCode == 'pt'
+            ? 'Grupo oficial no WhatsApp'
+            : languageCode == 'es'
+                ? 'Grupo oficial en WhatsApp'
+                : 'Official WhatsApp group';
+      case 'homeWhatsAppGroupDescription':
+        return languageCode == 'pt'
+            ? 'Faça parte do grupo oficial Prato Seguro no WhatsApp e fique por dentro das novidades.'
+            : languageCode == 'es'
+                ? 'Forma parte del grupo oficial de Prato Seguro en WhatsApp y mantente al tanto de las novedades.'
+                : 'Join the official Prato Seguro WhatsApp group and stay up to date with the news.';
+      case 'homeWhatsAppGroupButton':
+        return languageCode == 'pt'
+            ? 'Entrar no grupo'
+            : languageCode == 'es'
+                ? 'Entrar al grupo'
+                : 'Join group';
+      case 'homeWhatsAppGroupOpenError':
+        return languageCode == 'pt'
+            ? 'Não foi possível abrir o WhatsApp. Tente novamente.'
+            : languageCode == 'es'
+                ? 'No fue posible abrir WhatsApp. Inténtalo de nuevo.'
+                : 'Could not open WhatsApp. Please try again.';
+
+      // Settings & Profile
+      case 'settings':
+        return languageCode == 'pt' ? 'Configurações' : languageCode == 'es' ? 'Configuración' : 'Settings';
+      case 'profilePhotoUpdated':
+        return languageCode == 'pt'
+            ? 'Foto de perfil atualizada!'
+            : languageCode == 'es'
+                ? 'Foto de perfil actualizada.'
+                : 'Profile photo updated!';
+      case 'coverPhotoUpdated':
+        return languageCode == 'pt'
+            ? 'Capa atualizada!'
+            : languageCode == 'es'
+                ? 'Portada actualizada.'
+                : 'Cover photo updated!';
+      case 'editProfile':
+        return languageCode == 'pt' ? 'Editar Perfil' : languageCode == 'es' ? 'Editar Perfil' : 'Edit Profile';
+      case 'referEstablishment':
+        return languageCode == 'pt' ? 'Indicar Estabelecimento' : languageCode == 'es' ? 'Indicar Establecimiento' : 'Refer Establishment';
+      case 'helpCommunity':
+        return languageCode == 'pt' ? 'Ajude a comunidade a crescer' : languageCode == 'es' ? 'Ayuda a la comunidad a crecer' : 'Help the community grow';
+      case 'leaderboard':
+        return languageCode == 'pt' ? 'Ranking' : languageCode == 'es' ? 'Clasificación' : 'Leaderboard';
+      case 'changeCoverPhoto':
+        return languageCode == 'pt' ? 'Alterar Capa' : languageCode == 'es' ? 'Cambiar Portada' : 'Change Cover';
+      case 'trailMap':
+        return languageCode == 'pt' ? 'Mapa da Trilha' : languageCode == 'es' ? 'Mapa de la Ruta' : 'Trail Map';
+      case 'viewTrail':
+        return languageCode == 'pt' ? 'Ver Trilha' : languageCode == 'es' ? 'Ver Ruta' : 'View Trail';
+
       default:
+        debugPrint('Missing translation for key: ' + key + ' (lang: ' + languageCode + ')');
         return key;
     }
   }

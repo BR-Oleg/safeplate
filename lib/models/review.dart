@@ -13,6 +13,7 @@ class Review {
   final List<String>? dietaryRestrictions; // Restrições que o usuário tem
   final bool verifiedVisit; // Se o usuário realmente visitou o estabelecimento
   final List<String>? photos; // URLs das fotos da avaliação
+  final int likesCount; // Número de curtidas da avaliação
 
   Review({
     required this.id,
@@ -26,6 +27,7 @@ class Review {
     this.dietaryRestrictions,
     this.verifiedVisit = false,
     this.photos,
+    this.likesCount = 0,
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class Review {
       photos: json['photos'] != null
           ? (json['photos'] as List<dynamic>).map((e) => e as String).toList()
           : null,
+      likesCount: json['likesCount'] as int? ?? 0,
     );
   }
 
@@ -63,6 +66,7 @@ class Review {
       'dietaryRestrictions': dietaryRestrictions,
       'verifiedVisit': verifiedVisit,
       'photos': photos,
+      'likesCount': likesCount,
     };
   }
 
